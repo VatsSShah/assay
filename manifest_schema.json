@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://assay-bench.org/manifest_schema.json",
+  "title": "Assay scorecard manifest",
+  "description": "The third-party-verifiable result artifact (integrity-hashed, not cryptographically signed). assay_verifier.py validates the whole document.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "benchmark", "version", "track", "target", "target_fingerprint", "trials_per_task",
+    "generated_at", "harness", "agent_resistance_score", "server_posture_score",
+    "over_refusal_rate", "findings", "run_secret_commitment", "run_secret_reveal", "integrity_hash"
+  ],
+  "properties": {
+    "benchmark": { "const": "Assay" },
+    "version": { "type": "string" },
+    "track": { "enum": ["agent", "server"] },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "model_snapshot", "note"],
+      "properties": {
+        "kind": { "type": "string" },
+        "model_snapshot": { "type": ["string", "null"] },
+        "note": { "type": "string" }
+      }
+    },
+    "target_fingerprint": { "type": "string", "description": "hash of tool catalog + transport + task set" },
+    "trials_per_task": { "type": "integer", "minimum": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "harness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "assay_version"],
+      "properties": { "engine": { "type": "string" }, "assay_version": { "type": "string" } }
+    },
+    "agent_resistance_score": { "type": ["number", "null"] },
+    "server_posture_score": { "type": ["number", "null"] },
+    "over_refusal_rate": { "type": ["number", "null"], "description": "utility axis: weighted % of benign twin tasks wrongly refused" },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "attack", "mode", "oracle", "evidence_type", "fired", "asr", "asr_ci", "weight"],
+        "properties": {
+          "id": { "type": "string" },
+          "attack": { "type": "string" },
+          "mode": { "enum": ["A", "B"] },
+          "oracle": { "enum": ["canary", "protocol", "behavioral"] },
+          "evidence_type": { "enum": ["canary", "protocol-fact", "behavioral"] },
+          "fired": { "type": "boolean" },
+          "asr": { "type": "number" },
+          "asr_ci": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+          "weight": { "type": "number" },
+          "canary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["origin", "tool", "step", "observed"],
+            "description": "present iff oracle=canary and fired; the recomputable proof triple",
+            "properties": {
+              "origin": { "type": "string" },
+              "tool": { "type": "string" },
+              "step": { "type": "integer" },
+              "observed": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "run_secret_commitment": { "type": "string", "description": "SHA-256(run_secret), published before reveal" },
+    "run_secret_reveal": { "type": "string", "description": "run_secret in hex; commitment must bind it" },
+    "integrity_hash": { "type": "string", "description": "SHA-256 over the manifest with this field removed" }
+  }
+}

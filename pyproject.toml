@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "assay-bench"
+version = "0.1.0"
+description = "Assay, a canary-oracle benchmark for MCP security. Verify a scorecard with math, not a model's opinion."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+keywords = ["mcp", "security", "benchmark", "llm", "agent", "red-team"]
+
+# The published package is the neutral standard: the verifier + the frozen task set.
+# It has no third-party dependencies, it runs on the standard library alone.
+dependencies = []
+
+[project.scripts]
+assay = "assay_verifier:cli"
+assay-bench = "assay_verifier:cli"
+
+[project.urls]
+Homepage = "https://www.verosek.com"
+Repository = "https://github.com/VatsSShah/assay"
+Specification = "https://github.com/VatsSShah/assay/blob/main/SPEC.md"
+Leaderboard = "https://github.com/VatsSShah/assay/tree/main/leaderboard"
+
+[tool.setuptools]
+py-modules = ["assay_verifier"]  # the installable CLI is the verifier; scoring/badge/coverage are repo tools

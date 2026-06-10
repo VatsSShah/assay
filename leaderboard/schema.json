@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://assay-bench.org/leaderboard/schema.json",
+  "title": "Assay leaderboard entry",
+  "description": "A submission. The score is read from the linked manifest and re-verified (recomputed from the findings), so it cannot be self-reported.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["submitter", "target_name", "track", "manifest", "date"],
+    "properties": {
+      "submitter": { "type": "string" },
+      "target_name": { "type": "string", "description": "the MCP server or agent model scored" },
+      "track": { "enum": ["agent", "server"] },
+      "manifest": { "type": "string", "description": "path to the scorecard manifest in this repo" },
+      "date": { "type": "string", "format": "date" },
+      "notes": { "type": "string" }
+    }
+  }
+}

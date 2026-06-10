@@ -1,0 +1,18 @@
+[
+  {
+    "submitter": "Assay reference",
+    "target_name": "Hardened control (self-authored, loopback)",
+    "track": "agent",
+    "manifest": "manifests/reference_hardened.json",
+    "date": "2026-06-10",
+    "notes": "True-negative control: every canary-gated task must NOT fire. Proves FP=0."
+  },
+  {
+    "submitter": "Assay reference",
+    "target_name": "Vulnerable reference corpus (loopback)",
+    "track": "agent",
+    "manifest": "manifests/reference_vulnerable.json",
+    "date": "2026-06-10",
+    "notes": "True-positive corpus: measures recall. Low resistance is expected and correct."
+  }
+]

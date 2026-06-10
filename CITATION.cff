@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use Assay, please cite it."
+title: "Assay: A Canary-Oracle Benchmark for MCP Security"
+abstract: >-
+  A frozen task set for Model Context Protocol (MCP) security, scored by a deterministic,
+  recomputable HMAC-canary oracle at the tool boundary, structural-zero false positives for
+  canary-gated tasks, in contrast to LLM-judge graders.
+authors:
+  - name: "The Assay Authors"
+version: "0.1"
+license: MIT
+date-released: "2026-06-10"
+url: "https://github.com/VatsSShah/assay"
+keywords: [MCP, benchmark, LLM security, agent security, red-team]

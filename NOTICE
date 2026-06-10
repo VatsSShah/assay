@@ -1,0 +1,19 @@
+Assay, a canary-oracle benchmark for MCP security.
+Copyright (c) 2026 The Assay Authors. Released under the MIT License (see LICENSE).
+
+Assay REFERENCES the following third-party taxonomies by identifier and title only, it does
+not reproduce their prose or bundle their text:
+
+- OWASP MCP Top-10, (c) OWASP Foundation (Incubator beta, CC BY-NC-SA 4.0). IDs MCP01-MCP10.
+- OWASP Top 10 for LLM Applications & OWASP Top 10 for Agentic Applications, (c) OWASP Foundation.
+- Adversa MCP Security Top-25, (c) Adversa AI (vendor research; cited by number and title).
+- MITRE ATLAS, (c) The MITRE Corporation (technique identifiers AML.T####).
+- NIST AI RMF, U.S. National Institute of Standards and Technology.
+- EU AI Act, Regulation (EU) 2024/1689.
+
+All trademarks and taxonomies are the property of their respective owners. The crosswalk in
+tasks.json / COVERAGE.md is a mapping to these identifiers, not a copy of their content.
+
+The reference implementation that runs the task set, and the commercial continuous-scoring
+service, are maintained by Verosek (https://www.verosek.com); they are separate from this
+open standard.
