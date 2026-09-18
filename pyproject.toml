@@ -4,20 +4,31 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "assay-bench"
-version = "0.1.0"
-description = "Assay, a canary-oracle benchmark for MCP security. Verify a scorecard with math, not a model's opinion."
+version = "0.2.0"
+description = "Assay: a canary-oracle task set, runner and levelled verifier for MCP security."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-keywords = ["mcp", "security", "benchmark", "llm", "agent", "red-team"]
+keywords = ["mcp", "security", "benchmark", "llm", "agent", "red-team", "canary"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Security",
+]
 
-# The published package is the neutral standard: the verifier + the frozen task set.
-# It has no third-party dependencies, it runs on the standard library alone.
+# No third-party dependencies, at runtime or for the tests: the suite is written against
+# unittest precisely so the "standard library alone" claim stays true end to end.
 dependencies = []
 
 [project.scripts]
-assay = "assay_verifier:cli"
-assay-bench = "assay_verifier:cli"
+# One CLI with subcommands. Both names resolve to it, and every v0.1 invocation still works:
+#   assay <manifest.json>          -> verify (legacy bare-path form)
+#   assay triple <secret> ...      -> verify one proof triple
+#   assay verify|levels|run|reference|precommit|precommit-verify|precommit-list|attest
+assay = "assay_bench.cli:cli"
+assay-bench = "assay_bench.cli:cli"
 
 [project.urls]
 Homepage = "https://www.verosek.com"
@@ -26,4 +37,13 @@ Specification = "https://github.com/VatsSShah/assay/blob/main/SPEC.md"
 Leaderboard = "https://github.com/VatsSShah/assay/tree/main/leaderboard"
 
 [tool.setuptools]
-py-modules = ["assay_verifier"]  # the installable CLI is the verifier; scoring/badge/coverage are repo tools
+# The single-file verifier stays a top-level module on purpose: it is meant to be copied and
+# run anywhere with the standard library alone. `scoring` is the canonical scorer it is
+# parity-tested against, so the wheel must carry it too.
+py-modules = ["assay_verifier", "scoring", "badge"]
+packages = ["assay_bench", "assay_bench.adapters"]
+
+[tool.setuptools.package-data]
+# Generated from the canonical root tasks.json by `python -m assay_bench.sync_data`; CI fails
+# if the two drift. The installed CLI needs it to bind findings to the frozen catalog.
+assay_bench = ["data/*.json"]

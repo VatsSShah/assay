@@ -1,0 +1,152 @@
+{
+  "benchmark_version": "0.1",
+  "task_set": {
+    "tasks": 31,
+    "digest": "e8a6e47520e38b0e4e03fe5ef408f8f5ff1eaf11549a9dced2c76273877bb81b",
+    "split": "public",
+    "mode_b": 28,
+    "mode_a": 3,
+    "oracles": {
+      "canary": 25,
+      "protocol": 2,
+      "behavioral": 4
+    }
+  },
+  "code_commit": "675fae7d2d3c6ae9fb97ce3d761492dfb7e35a37",
+  "branch": "claude/vibrant-allen-eem19b",
+  "generated_runs": [
+    {
+      "artifact": "leaderboard/manifests/reference_hardened.json",
+      "sha256": "5bc873b61353fc6805ac0ccc533235cf0e4abd48f92fae90dc33853f654c5818",
+      "target": "conformance-hardened",
+      "target_is_real": false,
+      "deterministic_target": true,
+      "adapter": "conformance-hardened",
+      "transport": "in-process",
+      "benchmark_version": "0.1",
+      "manifest_format": "2",
+      "runner_version": "0.2.0",
+      "task_set_digest": "e8a6e47520e38b0e4e03fe5ef408f8f5ff1eaf11549a9dced2c76273877bb81b",
+      "target_fingerprint": "2b2f409c77433a13",
+      "trials_per_task": 25,
+      "tasks_reported": 31,
+      "completion": "complete",
+      "errors": 0,
+      "timeouts": 0,
+      "agent_resistance_score": 100.0,
+      "server_posture_score": 100.0,
+      "over_refusal_rate": null,
+      "canary_findings": 0,
+      "canary_confirmed": 0,
+      "levels_verified": [
+        "format_valid",
+        "internally_consistent",
+        "canary_correspondence_verified",
+        "catalog_bound",
+        "run_complete"
+      ],
+      "invariants_digest": "ef7074e79658a07e130918dde40fd093c0c6d64dc741c650743bbdfa2d8610b0"
+    },
+    {
+      "artifact": "leaderboard/manifests/reference_mixed.json",
+      "sha256": "c6f4e59d03b4035ee64dcfae35b922998d94320096c900f7bc6156827c9d75f8",
+      "target": "conformance-mixed",
+      "target_is_real": false,
+      "deterministic_target": true,
+      "adapter": "conformance-mixed",
+      "transport": "in-process",
+      "benchmark_version": "0.1",
+      "manifest_format": "2",
+      "runner_version": "0.2.0",
+      "task_set_digest": "e8a6e47520e38b0e4e03fe5ef408f8f5ff1eaf11549a9dced2c76273877bb81b",
+      "target_fingerprint": "f930ca877daa06dd",
+      "trials_per_task": 25,
+      "tasks_reported": 31,
+      "completion": "complete",
+      "errors": 0,
+      "timeouts": 0,
+      "agent_resistance_score": 71.7,
+      "server_posture_score": 81.0,
+      "over_refusal_rate": null,
+      "canary_findings": 7,
+      "canary_confirmed": 7,
+      "levels_verified": [
+        "format_valid",
+        "internally_consistent",
+        "canary_correspondence_verified",
+        "catalog_bound",
+        "run_complete"
+      ],
+      "invariants_digest": "552ea2cabc37c113bd920ee1bd7ad8e434898ebc9e5cb4b19343d8d47cd4d1cf"
+    },
+    {
+      "artifact": "leaderboard/manifests/reference_vulnerable.json",
+      "sha256": "af5af10961e0635804a3ff65bf32b1f38b04576830b05549d1deab03c7457721",
+      "target": "conformance-vulnerable",
+      "target_is_real": false,
+      "deterministic_target": true,
+      "adapter": "conformance-vulnerable",
+      "transport": "in-process",
+      "benchmark_version": "0.1",
+      "manifest_format": "2",
+      "runner_version": "0.2.0",
+      "task_set_digest": "e8a6e47520e38b0e4e03fe5ef408f8f5ff1eaf11549a9dced2c76273877bb81b",
+      "target_fingerprint": "5bb7cc4e898799a0",
+      "trials_per_task": 25,
+      "tasks_reported": 31,
+      "completion": "complete",
+      "errors": 0,
+      "timeouts": 0,
+      "agent_resistance_score": 0.0,
+      "server_posture_score": 0.0,
+      "over_refusal_rate": null,
+      "canary_findings": 25,
+      "canary_confirmed": 25,
+      "levels_verified": [
+        "format_valid",
+        "internally_consistent",
+        "canary_correspondence_verified",
+        "catalog_bound",
+        "run_complete"
+      ],
+      "invariants_digest": "76fd2f39201330c8997e859ecf503c25835aea4bffaca5ac0eec08d26dda1e04"
+    }
+  ],
+  "legacy_fixtures": [
+    {
+      "artifact": "tests/fixtures/legacy_v0_1/reference_hardened.json",
+      "sha256": "b04b6d26b0fc187dba7b85ff7de676c5835c0135cbf0de52bda9b571c8b05b91",
+      "benchmark_version": "0.1",
+      "levels_verified": [
+        "format_valid",
+        "internally_consistent",
+        "canary_correspondence_verified",
+        "catalog_bound",
+        "run_complete"
+      ],
+      "note": "v0.1 artifact retained as a backwards-compatibility fixture"
+    },
+    {
+      "artifact": "tests/fixtures/legacy_v0_1/reference_vulnerable.json",
+      "sha256": "e4f1d5f4d91d2c456e14ae5a8501f208c2f425e159764bedd6ae2d98b3a78eee",
+      "benchmark_version": "0.1",
+      "levels_verified": [
+        "format_valid",
+        "internally_consistent",
+        "canary_correspondence_verified",
+        "catalog_bound",
+        "run_complete"
+      ],
+      "note": "v0.1 artifact retained as a backwards-compatibility fixture"
+    }
+  ],
+  "artifact_hashes": {
+    "reference/conformance_matrix.json": "264b4247fbf588677e917a835ced21af88eeaef58cc8754e667df64b656fced1",
+    "tasks.json": "5bb7f398eb738eeeb9eb30b40ad3ca1f2129bae67fe7830bb91eb665a754c925",
+    "COVERAGE.md": "7f4549cb318ddc06d350b9c8349f942ad185fa6c98221998d7c8ce58652358f4",
+    "leaderboard/index.md": "8f8280bbfa6b3737566a8ecbd319a7d79eb5645393cdf7eb3b48fcc85f303599",
+    "demo/recording/assay-demo.webm": "6e86bc078ec9879c55a20701ac78744f66051b5c4bf72b74ab072d22dbaa759c",
+    "demo/recording/validation.json": "f368db665c96726f55471c6979b06eb35cfb7aacd0e0a586e625973981cfa0e6"
+  },
+  "caveat": "Every generated run above used a built-in DETERMINISTIC conformance target. target_is_real is false for all of them. None is a measurement of any real MCP server, agent or model."
+}

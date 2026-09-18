@@ -1,0 +1,400 @@
+{
+  "frames_sampled": 31,
+  "distinct_frames": 31,
+  "all_frames_distinct": true,
+  "frozen_adjacent_pairs": 0,
+  "longest_frozen_run_samples": 0,
+  "pairs_with_visible_change": 30,
+  "fraction_of_pairs_changing": 1.0,
+  "mean_signature_distance": 0.06114,
+  "median_signature_distance": 0.04008,
+  "min_signature_distance": 0.001524,
+  "max_signature_distance": 0.206761,
+  "mean_distance_first_half": 0.069397,
+  "mean_distance_second_half": 0.052883,
+  "change_is_spread_across_timeline": true,
+  "samples": [
+    {
+      "frame": "frame-00000.jpg",
+      "bytes": 40567,
+      "sha256": "8855281c1eaa9f56283edc32397c7a1d0848b3c75387e2035346b1397b6e132a"
+    },
+    {
+      "frame": "frame-00007.jpg",
+      "bytes": 40265,
+      "sha256": "edc269772f1af92987f7e8edb977b5d07d12f3db750d6249700a34814a6b015e"
+    },
+    {
+      "frame": "frame-00014.jpg",
+      "bytes": 43392,
+      "sha256": "8ebeb4be46c9bdc780c4c2c0a205ab61ad82b224d5014ea90f2825441a72a8c9"
+    },
+    {
+      "frame": "frame-00021.jpg",
+      "bytes": 43400,
+      "sha256": "856cd04643dd90a3e6add7cb4bda80b735cea889b1130888a3acce825b3bca47"
+    },
+    {
+      "frame": "frame-00028.jpg",
+      "bytes": 51646,
+      "sha256": "8275e1c1a7419d84ac642186c6fa9483cc16f5e5a37af422e4cc9bec1124b67c"
+    },
+    {
+      "frame": "frame-00035.jpg",
+      "bytes": 57742,
+      "sha256": "5d201399fae6408e22df1e2844ec50277f4535da012a9378e8aede025c106c36"
+    },
+    {
+      "frame": "frame-00042.jpg",
+      "bytes": 57471,
+      "sha256": "6cd84e452f8cd80abb51d6daaa5f697789d9d8af85626316d2142757b58d933b"
+    },
+    {
+      "frame": "frame-00049.jpg",
+      "bytes": 85429,
+      "sha256": "a50af1c52d3de57d51f2f44d023a14c5e6e7fabcc42362aceee8001f0e9cf80a"
+    },
+    {
+      "frame": "frame-00056.jpg",
+      "bytes": 105543,
+      "sha256": "9f14653898a2f6e9ed4bf6da0511e8597dd6732eb6934257a60013d4838040fd"
+    },
+    {
+      "frame": "frame-00063.jpg",
+      "bytes": 105259,
+      "sha256": "f2fbfa19ddb96d84318de7db1e7f2faca2304f958078730179282ff0974bfef5"
+    },
+    {
+      "frame": "frame-00070.jpg",
+      "bytes": 119355,
+      "sha256": "70183cfed0dfa1657329854e134552bbe253b3a89e3f6bfb92ca2c2baa2aee4a"
+    },
+    {
+      "frame": "frame-00077.jpg",
+      "bytes": 148037,
+      "sha256": "85677d98949e7da8fb1d4a4e409978042ca859ffd7e74afdb30b2dfeaec41280"
+    },
+    {
+      "frame": "frame-00084.jpg",
+      "bytes": 147725,
+      "sha256": "69b9a5090f47b45387ded51452e6912bc0efed497841ccee881f971b44c43302"
+    },
+    {
+      "frame": "frame-00091.jpg",
+      "bytes": 162475,
+      "sha256": "da37bdc24791bf53163c0452b8ac417fabe7b7fe75cb9aa48cad8b644c0a1b43"
+    },
+    {
+      "frame": "frame-00098.jpg",
+      "bytes": 162326,
+      "sha256": "9cfc1d2db02cb4bea19f2ff10385effc3be1bdc2d943377e0fc6b115f7698f3c"
+    },
+    {
+      "frame": "frame-00105.jpg",
+      "bytes": 185674,
+      "sha256": "4afd4400ef6e76357377e433e09927229f5acfbc71afac6639f61b7556b8a8ec"
+    },
+    {
+      "frame": "frame-00112.jpg",
+      "bytes": 199374,
+      "sha256": "5bcb3a50d7b8ae87ec0ce96108a7966821144a5f8afff06a71eee7c0909d6237"
+    },
+    {
+      "frame": "frame-00119.jpg",
+      "bytes": 199095,
+      "sha256": "a2935a2da52f21214af2e729dc5bcd93bfc790dd39acf0e7e3915149c9c795ba"
+    },
+    {
+      "frame": "frame-00126.jpg",
+      "bytes": 157720,
+      "sha256": "97d23dbaec76d926be8faf0667b3adcc8fdc66ca150a9fb9bd17dcd979011897"
+    },
+    {
+      "frame": "frame-00133.jpg",
+      "bytes": 157707,
+      "sha256": "a253a70e4495e40c0d91ab073ac1d17381015fa39aab5f48b50dad5cf5827a7d"
+    },
+    {
+      "frame": "frame-00140.jpg",
+      "bytes": 128811,
+      "sha256": "499f6a7414eb6e7f49a181ce4ebe4954255d05af045025e27bafc627ebb188e6"
+    },
+    {
+      "frame": "frame-00147.jpg",
+      "bytes": 132657,
+      "sha256": "9e15881c4f38fc9acdea29510664b85ad245c42655510bd748602b02241d24fa"
+    },
+    {
+      "frame": "frame-00154.jpg",
+      "bytes": 132413,
+      "sha256": "35361b0916a8162777a9bc8c194d05b75b7150304b2d71691aa316484a7423cd"
+    },
+    {
+      "frame": "frame-00161.jpg",
+      "bytes": 177146,
+      "sha256": "00db6decfa772069f3ca30c56261f431e6e33460b606e78e6bc9c867af0dea08"
+    },
+    {
+      "frame": "frame-00168.jpg",
+      "bytes": 191443,
+      "sha256": "469ab446c35439435c166f362f57d5ab6ef1bc6fffec05d2c6ac708b9bbd3d91"
+    },
+    {
+      "frame": "frame-00175.jpg",
+      "bytes": 191156,
+      "sha256": "433f1e9bde5336ba5adb16b0e4082c90114e0bedf6efa91a168ea54925ec81ef"
+    },
+    {
+      "frame": "frame-00182.jpg",
+      "bytes": 223309,
+      "sha256": "6b13b657162ae0652713abcf1a3a0bc6e3da12a52820bcb93a89bf49cfb0b212"
+    },
+    {
+      "frame": "frame-00189.jpg",
+      "bytes": 223309,
+      "sha256": "c35a3bcd4c3407aa6fd016ef5a5505765f302c492b736b912f8b150c643f1bfc"
+    },
+    {
+      "frame": "frame-00196.jpg",
+      "bytes": 233590,
+      "sha256": "b1c20597d32ccad9fbd6b63023ea3ba3a30f08efad948d1f19af7ce8220e0570"
+    },
+    {
+      "frame": "frame-00203.jpg",
+      "bytes": 233846,
+      "sha256": "0dc57dc61f9a9fe69e2a86595c10df90014e0a6228b569b5bac7ff7e41c408e0"
+    },
+    {
+      "frame": "frame-00210.jpg",
+      "bytes": 233574,
+      "sha256": "e1482fe00e59d6f52219ae1bb28af73dcd2e6da9b7d5888e523cc7fd198c7afe"
+    }
+  ],
+  "adjacent_pairs": [
+    {
+      "from": "frame-00000.jpg",
+      "to": "frame-00007.jpg",
+      "bytes_delta": -302,
+      "identical_bytes": false,
+      "signature_distance": 0.041185
+    },
+    {
+      "from": "frame-00007.jpg",
+      "to": "frame-00014.jpg",
+      "bytes_delta": 3127,
+      "identical_bytes": false,
+      "signature_distance": 0.038974
+    },
+    {
+      "from": "frame-00014.jpg",
+      "to": "frame-00021.jpg",
+      "bytes_delta": 8,
+      "identical_bytes": false,
+      "signature_distance": 0.03365
+    },
+    {
+      "from": "frame-00021.jpg",
+      "to": "frame-00028.jpg",
+      "bytes_delta": 8246,
+      "identical_bytes": false,
+      "signature_distance": 0.098635
+    },
+    {
+      "from": "frame-00028.jpg",
+      "to": "frame-00035.jpg",
+      "bytes_delta": 6096,
+      "identical_bytes": false,
+      "signature_distance": 0.070798
+    },
+    {
+      "from": "frame-00035.jpg",
+      "to": "frame-00042.jpg",
+      "bytes_delta": -271,
+      "identical_bytes": false,
+      "signature_distance": 0.036512
+    },
+    {
+      "from": "frame-00042.jpg",
+      "to": "frame-00049.jpg",
+      "bytes_delta": 27958,
+      "identical_bytes": false,
+      "signature_distance": 0.198309
+    },
+    {
+      "from": "frame-00049.jpg",
+      "to": "frame-00056.jpg",
+      "bytes_delta": 20114,
+      "identical_bytes": false,
+      "signature_distance": 0.108909
+    },
+    {
+      "from": "frame-00056.jpg",
+      "to": "frame-00063.jpg",
+      "bytes_delta": -284,
+      "identical_bytes": false,
+      "signature_distance": 0.013431
+    },
+    {
+      "from": "frame-00063.jpg",
+      "to": "frame-00070.jpg",
+      "bytes_delta": 14096,
+      "identical_bytes": false,
+      "signature_distance": 0.073973
+    },
+    {
+      "from": "frame-00070.jpg",
+      "to": "frame-00077.jpg",
+      "bytes_delta": 28682,
+      "identical_bytes": false,
+      "signature_distance": 0.110464
+    },
+    {
+      "from": "frame-00077.jpg",
+      "to": "frame-00084.jpg",
+      "bytes_delta": -312,
+      "identical_bytes": false,
+      "signature_distance": 0.013407
+    },
+    {
+      "from": "frame-00084.jpg",
+      "to": "frame-00091.jpg",
+      "bytes_delta": 14750,
+      "identical_bytes": false,
+      "signature_distance": 0.048882
+    },
+    {
+      "from": "frame-00091.jpg",
+      "to": "frame-00098.jpg",
+      "bytes_delta": -149,
+      "identical_bytes": false,
+      "signature_distance": 0.012577
+    },
+    {
+      "from": "frame-00098.jpg",
+      "to": "frame-00105.jpg",
+      "bytes_delta": 23348,
+      "identical_bytes": false,
+      "signature_distance": 0.14125
+    },
+    {
+      "from": "frame-00105.jpg",
+      "to": "frame-00112.jpg",
+      "bytes_delta": 13700,
+      "identical_bytes": false,
+      "signature_distance": 0.049638
+    },
+    {
+      "from": "frame-00112.jpg",
+      "to": "frame-00119.jpg",
+      "bytes_delta": -279,
+      "identical_bytes": false,
+      "signature_distance": 0.026752
+    },
+    {
+      "from": "frame-00119.jpg",
+      "to": "frame-00126.jpg",
+      "bytes_delta": -41375,
+      "identical_bytes": false,
+      "signature_distance": 0.180873
+    },
+    {
+      "from": "frame-00126.jpg",
+      "to": "frame-00133.jpg",
+      "bytes_delta": -13,
+      "identical_bytes": false,
+      "signature_distance": 0.001827
+    },
+    {
+      "from": "frame-00133.jpg",
+      "to": "frame-00140.jpg",
+      "bytes_delta": -28896,
+      "identical_bytes": false,
+      "signature_distance": 0.101429
+    },
+    {
+      "from": "frame-00140.jpg",
+      "to": "frame-00147.jpg",
+      "bytes_delta": 3846,
+      "identical_bytes": false,
+      "signature_distance": 0.020136
+    },
+    {
+      "from": "frame-00147.jpg",
+      "to": "frame-00154.jpg",
+      "bytes_delta": -244,
+      "identical_bytes": false,
+      "signature_distance": 0.014658
+    },
+    {
+      "from": "frame-00154.jpg",
+      "to": "frame-00161.jpg",
+      "bytes_delta": 44733,
+      "identical_bytes": false,
+      "signature_distance": 0.206761
+    },
+    {
+      "from": "frame-00161.jpg",
+      "to": "frame-00168.jpg",
+      "bytes_delta": 14297,
+      "identical_bytes": false,
+      "signature_distance": 0.043795
+    },
+    {
+      "from": "frame-00168.jpg",
+      "to": "frame-00175.jpg",
+      "bytes_delta": -287,
+      "identical_bytes": false,
+      "signature_distance": 0.013065
+    },
+    {
+      "from": "frame-00175.jpg",
+      "to": "frame-00182.jpg",
+      "bytes_delta": 32153,
+      "identical_bytes": false,
+      "signature_distance": 0.079141
+    },
+    {
+      "from": "frame-00182.jpg",
+      "to": "frame-00189.jpg",
+      "bytes_delta": 0,
+      "identical_bytes": false,
+      "signature_distance": 0.001524
+    },
+    {
+      "from": "frame-00189.jpg",
+      "to": "frame-00196.jpg",
+      "bytes_delta": 10281,
+      "identical_bytes": false,
+      "signature_distance": 0.029601
+    },
+    {
+      "from": "frame-00196.jpg",
+      "to": "frame-00203.jpg",
+      "bytes_delta": 256,
+      "identical_bytes": false,
+      "signature_distance": 0.011673
+    },
+    {
+      "from": "frame-00203.jpg",
+      "to": "frame-00210.jpg",
+      "bytes_delta": -272,
+      "identical_bytes": false,
+      "signature_distance": 0.012369
+    }
+  ],
+  "video": {
+    "path": "demo/recording/assay-demo.webm",
+    "bytes": 3369398,
+    "sha256": "6e86bc078ec9879c55a20701ac78744f66051b5c4bf72b74ab072d22dbaa759c",
+    "container": "WebM (VP8)"
+  },
+  "gate": {
+    "most_pairs_change": true,
+    "no_long_frozen_stretch": true,
+    "change_spread_across_timeline": true,
+    "enough_distinct_frames": true
+  },
+  "verdict": "time-varying",
+  "method": "Sampled frames are compared by SHA-256 (exact difference) and by a histogram over the JPEG entropy stream (coarse change magnitude). The histogram is a difference detector, not a perceptual metric, and is not presented as one.",
+  "frames_dir": "demo/recording/frames"
+}

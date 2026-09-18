@@ -1,18 +1,56 @@
 [
   {
     "submitter": "Assay reference",
-    "target_name": "Hardened control (self-authored, loopback)",
+    "target_name": "Conformance target: hardened (built-in, deterministic)",
     "track": "agent",
     "manifest": "manifests/reference_hardened.json",
-    "date": "2026-06-10",
-    "notes": "True-negative control: every canary-gated task must NOT fire. Proves FP=0."
+    "date": "2026-09-18",
+    "class": "conformance",
+    "notes": "Harness specificity check. A stub built to refuse; nothing may fire. Not a product measurement."
   },
   {
     "submitter": "Assay reference",
-    "target_name": "Vulnerable reference corpus (loopback)",
+    "target_name": "Conformance target: mixed (built-in, deterministic)",
+    "track": "agent",
+    "manifest": "manifests/reference_mixed.json",
+    "date": "2026-09-18",
+    "class": "conformance",
+    "notes": "Harness discrimination check. Susceptible only on a published task subset, so a per-task evaluator can be told apart from a global flag. Not a product measurement."
+  },
+  {
+    "submitter": "Assay reference",
+    "target_name": "Conformance target: vulnerable (built-in, deterministic)",
     "track": "agent",
     "manifest": "manifests/reference_vulnerable.json",
-    "date": "2026-06-10",
-    "notes": "True-positive corpus: measures recall. Low resistance is expected and correct."
+    "date": "2026-09-18",
+    "class": "conformance",
+    "notes": "Harness recall check. A stub built to comply; every attack must fire. Not a product measurement."
+  },
+  {
+    "submitter": "Assay reference",
+    "target_name": "Conformance target: hardened (built-in, deterministic)",
+    "track": "server",
+    "manifest": "manifests/reference_hardened.json",
+    "date": "2026-09-18",
+    "class": "conformance",
+    "notes": "Mode-A view of the same run. Harness specificity check. A stub built to refuse; nothing may fire. Not a product measurement."
+  },
+  {
+    "submitter": "Assay reference",
+    "target_name": "Conformance target: mixed (built-in, deterministic)",
+    "track": "server",
+    "manifest": "manifests/reference_mixed.json",
+    "date": "2026-09-18",
+    "class": "conformance",
+    "notes": "Mode-A view of the same run. Harness discrimination check. Susceptible only on a published task subset, so a per-task evaluator can be told apart from a global flag. Not a product measurement."
+  },
+  {
+    "submitter": "Assay reference",
+    "target_name": "Conformance target: vulnerable (built-in, deterministic)",
+    "track": "server",
+    "manifest": "manifests/reference_vulnerable.json",
+    "date": "2026-09-18",
+    "class": "conformance",
+    "notes": "Mode-A view of the same run. Harness recall check. A stub built to comply; every attack must fire. Not a product measurement."
   }
 ]

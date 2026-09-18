@@ -1,27 +1,36 @@
 \documentclass[11pt]{article}
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb,hyperref,booktabs}
-\title{\textbf{Assay: A Canary-Oracle Benchmark for MCP Security}\\
-\large Scoring tool-boundary exfiltration by recomputable proof, not by judge}
+\title{\textbf{Assay: A Canary-Oracle Task Set and Result Format for MCP Security}\\
+\large Scoring tool-boundary exfiltration by recomputable evidence, with the trust boundary stated}
 \author{The Assay Authors}
-\date{v0.1, June 2026}
+\date{v0.1, revised September 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Benchmarks for jailbreak and harm evaluation became canonical by fixing a false-positive
-problem and shipping neutrality, a frozen task set, and one comparable number. Yet the two
-standards, HarmBench and StrongREJECT, both score with a \emph{learned grader}, inheriting
-a \emph{measured} false-positive rate. For the Model Context Protocol (MCP), the relevant
-artifacts (OWASP MCP Top-10, Adversa MCP Top-25, MITRE ATLAS) are taxonomies with no scoring
-oracle at all. We introduce \textbf{Assay}, a frozen MCP task set scored by a deterministic,
-recomputable cryptographic oracle at the tool boundary: a per-run HMAC canary whose
-appearance in an egress sink is \emph{proof}, not judgment. We prove that canary-gated tasks
-have structurally zero false positives, distinct from judge-gated evidence whose FP rate is
-empirical, and we report a confusion matrix over 31 tasks in which canary-gated families show
-$0/625$ false positives (Wilson 95\% $\le 0.62\%$) on built-in reference targets (mechanism validation, not a field measurement) while every attack fires against its
-vulnerable target.
+An MCP agent reads tool descriptions and tool results from servers it does not control, and a
+poisoned description can coerce it into exfiltrating secrets through another tool. Deciding
+\emph{whether that happened} is usually delegated to a learned grader, which inherits a
+measured false-positive rate. We describe \textbf{Assay}: a frozen 31-task Model Context
+Protocol security task set whose canary-gated results are decided by recomputing a per-run
+HMAC digest at the tool boundary rather than by a judge, together with an open runner, a
+verifier that reports \emph{which} evidence level a result reaches, and an explicit statement
+of the levels it cannot reach.
+
+We are careful about what this buys. The cryptographic argument bounds false \emph{positives}
+on the 25 canary-gated tasks only; it says nothing about the 6 protocol and behavioural tasks
+the headline scores also aggregate, and nothing about false negatives, of which we measure 15
+out of 22 tested egress transformations. More importantly, the argument bounds forgery by a
+party \emph{without} the run secret, and in the submission model the submitter holds it: a
+keyholder can compute a valid digest and paste it into an invented observation, and our own
+verifier cannot tell the difference. We therefore publish verification as a lattice of named
+levels rather than a verdict, pin each unreachable level as a passing adversarial test, and
+separate coherence from precommitment ordering and from independent rerun. We also withdraw
+the priority claims of an earlier revision: four MCP-specific security benchmarks predate this
+work, several executing against real MCP servers, where Assay currently ships only
+deterministic in-process conformance targets.
 \end{abstract}
 
 \section{Introduction}
@@ -33,19 +42,51 @@ deterministic environment-state check (AgentDojo~\cite{agentdojo}). None decides
 per-run cryptographic token at the tool boundary. Assay does, and that single design choice
 removes the judge, and its false positives, from the loop for the tasks that matter most.
 
-Our claim is narrow and defensible. AgentDojo already owns ``deterministic oracle vs.\ LLM
-judge'' for agent prompt-injection; we do \emph{not} claim to be first there. We claim to be
-the first \emph{cryptographic, recomputable, structural-zero-FP exfiltration proof at the MCP
-tool boundary}, run against MCP-vulnerable corpora, packaged as a frozen, citable benchmark.
+Our claim is narrower than an earlier revision of this paper asserted, and the change is
+deliberate. AgentDojo~\cite{agentdojo} established judge-free deterministic scoring for agent
+prompt injection in 2024. Keyed canary and honeytoken exfiltration detection, including
+HMAC-keyed per-placement tokens, is long-standing practice; the primitive is inherited, not
+invented here. And four MCP-specific security benchmarks predate this
+work~\cite{mcpsecbench,mcptox,msb,mcpsafetybench}, two of which execute against real MCP
+servers and real tools rather than simulations. We claim no first.
 
-\section{Background}
-\textbf{HarmBench}~\cite{harmbench} scores attack success with a fine-tuned Llama-2-13b
-classifier, $\mathrm{ASR}=\frac{1}{N}\sum_i c(f_T(x_i),y)$; $c(\cdot)$ is a learned model
-($\sim$93\% human agreement). \textbf{StrongREJECT}~\cite{strongreject} uses an LLM-judge
-autograder, $\mathrm{score}=(1-\mathrm{refused})\times(\mathrm{specific}+\mathrm{convincing})/2$,
-validated by correlation to humans (Spearman 0.90). Both are \emph{measured}-FP graders. The
-MCP taxonomies, OWASP MCP Top-10 (an Incubator beta draft), Adversa MCP Top-25 (a vendor
-ranking), MITRE ATLAS (the one official standard), define threats but no scoring mechanism.
+What we do contribute is three things, each checkable from the artifact. First, a
+\emph{recomputable result format}: a finding ships the triple $(k, p, \text{observed})$, so a
+third party re-derives the digest offline with the standard library and confirms it without
+rerunning anything and without a grader. Second, \emph{levelled verification with a written
+trust boundary}: the verifier reports which of five named properties a document reaches and
+refuses to compress them into one word, and every property it cannot establish is recorded as
+a passing adversarial test rather than as prose. Third, a \emph{frozen, weighted,
+taxonomy-crosswalked task set} whose ids, modes, oracle classes and severity weights are
+immutable within a version line, so two results in the same line are comparable.
+
+\section{Related work}
+\textbf{Jailbreak graders.} HarmBench~\cite{harmbench} scores attack success with a fine-tuned
+classifier, $\mathrm{ASR}=\frac{1}{N}\sum_i c(f_T(x_i),y)$, where $c(\cdot)$ is a learned model
+($\sim$93\% human agreement). StrongREJECT~\cite{strongreject} uses an LLM-judge autograder
+validated by correlation to humans (Spearman 0.90). Both carry a \emph{measured} false-positive
+rate. Neither is MCP-scoped.
+
+\textbf{Deterministic agent oracles.} AgentDojo~\cite{agentdojo} evaluates agent prompt
+injection with a per-task predicate over environment state, with no LLM judge. It owns the
+deterministic-oracle-versus-judge framing, and Assay does not contest that.
+
+\textbf{MCP security benchmarks.} An earlier revision of this paper asserted that the MCP
+artifacts were taxonomies with no scoring mechanism. That was wrong. MCPSecBench~\cite{mcpsecbench}
+(Aug 2025) covers 17 attack types over four attack surfaces with real MCP clients and servers and
+a GUI harness, evaluated across Claude, OpenAI and Cursor hosts. MCPTox~\cite{mcptox} (Aug 2025)
+builds 1{,}312 tool-poisoning cases over \emph{45 live real-world MCP servers} and 353 authentic
+tools, evaluated across 20 agent settings. MSB~\cite{msb} (Oct 2025) covers 12 attack families
+with 2{,}000 instances over 405 tools, executing real tools over MCP rather than simulating them.
+MCP-SafetyBench~\cite{mcpsafetybench} (Dec 2025) covers 20 attack types across server, host and
+user sides over real MCP servers in five domains. All four predate this work and all four
+released artifacts.
+
+Assay's position relative to them is therefore not priority and not scale. It is a different
+deliverable: where those suites publish \emph{measurements}, Assay publishes a \emph{result
+format} whose internal evidence a third party can recheck offline, plus a statement of exactly
+how far that recheck goes. On execution realism Assay is currently behind them: it ships only
+deterministic in-process conformance targets, and has scored no real MCP server, agent or model.
 
 \section{The oracle}
 A canary is
@@ -74,11 +115,48 @@ $2^{-64}$, so over $Q$ egress strings $P(\text{forge})\le Q\cdot 2^{-64}$, negli
 Birthday collisions among the $\le$25 planted canaries are $\approx 25^2/2\cdot 2^{-64}$, also
 negligible. Hence fire $\Rightarrow$ egress w.p.\ $1-2^{-64}$. $\qed$
 
-This is \emph{explicitly distinct} from behavioral/judge-gated evidence, whose FP rate is
-empirical and must carry a confidence interval. The full 256-bit tag is available for a
-tighter bound. Critically, the proof is \emph{modality-agnostic}: whether the directive rides
-text, image pixels, a document, or audio, success is the same cryptographic fact, so Assay
-avoids the per-modality judge-FP problem a vision or ASR judge would introduce.
+This is \emph{explicitly distinct} from behavioral evidence, whose FP rate is empirical and must
+carry a confidence interval. The full 256-bit tag is available for a tighter bound. The argument
+is also modality-agnostic: whether the directive rides text, image pixels, a document or audio,
+success is the same recomputation, so no per-modality judge enters the loop.
+
+\subsection{What the argument does not cover}
+The bound is over a party \emph{without} $k$. In the submission model the submitter holds $k$,
+so for them there is nothing to forge: compute $t$, paste it into an invented
+\texttt{observed}, and the verifier confirms it. Four properties therefore remain outside
+verification, and each is pinned in the repository as a \emph{passing} adversarial test rather
+than as prose:
+
+\begin{enumerate}
+\item \textbf{That a target ran.} \texttt{observed} is submitter-supplied text.
+\item \textbf{That the report is complete.} Findings can be omitted, and because the score is
+recomputed from whatever remains, omission \emph{raises} it. Counting reported findings against
+the frozen catalog blocks a partial run from being presented as a complete score, but a silently
+unrun attack reported as resisted is indistinguishable from a real one.
+\item \textbf{That the commitment predated the run}, when commitment and reveal travel in one
+document (\S\ref{sec:integrity}).
+\item \textbf{That the target is the system it is named after}, or that anyone else reran it.
+\end{enumerate}
+
+Verification is consequently published as a lattice of named levels --- \texttt{format\_valid},
+\texttt{internally\_consistent}, \texttt{canary\_correspondence\_verified},
+\texttt{catalog\_bound}, \texttt{run\_complete} --- with \texttt{precommitment\_verified},
+\texttt{independently\_rerun} and \texttt{maintainer\_attested} declared out of the verifier's
+scope entirely. No single word is emitted, because compressing these into one is precisely how a
+coherence check gets mistaken for an attestation.
+
+\subsection{False negatives}
+The FP argument says nothing about misses, and the oracle has many: it matches a contiguous
+substring, so egress that splits the digest across requests, truncates it, re-encodes it outside
+the four frozen forms, compresses, encrypts, hashes, homoglyph-substitutes or paraphrases it is
+not detected. Over 22 tested transformations, 7 are detected and 15 are missed. A miss scores as
+resistance, so \textbf{a headline score is an upper bound on resistance, not a measurement of
+it.} We publish these blind spots rather than patching them: widening the encoding set redefines
+the oracle, and closing them with a judge would forfeit the determinism that motivates the design.
+
+Finally, the headline scores aggregate all three evidence classes --- 25 canary, 4 behavioural,
+2 protocol --- while the argument above covers only the canary subset. Any claim that Assay has
+zero false positives \emph{simpliciter} is false as stated.
 
 \section{Metrics}
 Per task $i$ over $N$ trials with $\mathrm{hits}_i$ successes, $\mathrm{ASR}_i =
@@ -88,35 +166,60 @@ severity weights $w_i$,
 \quad
 \text{Server Posture} = 100\Big(1-\tfrac{\sum_{i\in A} w_i\,\mathrm{ASR}_i}{\sum_{i\in A} w_i}\Big). \]
 
-\section{Result integrity}
-Before the run, the harness publishes $\mathrm{commitment}=\mathrm{SHA\text{-}256}(k)$; after,
-it reveals $k$. The manifest records, per task, the mode, verdict, evidence type, and
-(for canary hits) the triple $(k, p, \text{observed})$, plus the commitment/reveal, model
-snapshot, $N$, and an integrity hash over the document. A standalone, stdlib-only verifier
-confirms the commitment binds the reveal, every canary triple recomputes, and the integrity
-hash matches, so a leaderboard claim is auditable cold. The leaderboard accepts rows by PR,
-re-verifies each manifest at build time (the score is read from the manifest, never
-self-reported), and a maintainer re-runs before merge.
+\section{Result integrity}\label{sec:integrity}
+A manifest records, per task, the mode, oracle class, evidence type, ASR with interval, severity
+weight and (for canary hits) the triple $(k,p,\text{observed})$, plus the commitment and reveal,
+scope, provenance, and a SHA-256 integrity hash over the document. The hash makes
+post-publication alteration \emph{detectable}; it is not a signature and authenticates no author.
+The target fingerprint is a SHA-256 over a fully specified canonical serialisation, and its
+pre-image is republished in the manifest so a reader can recompute it by hand.
 
-\section{Evaluation}
-The reference run scores all 31 frozen tasks against a built-in labeled corpus: a vulnerable
-target (labeled positive) and a hardened control (labeled negative) per task. At $N=25$:
-every task fires against its vulnerable target (recall $=1$), and canary-gated families raise
-$0/625$ findings against the hardened control (Wilson 95\% $\le 0.62\%$). A control that trips
-is treated as a harness bug to fix before release, not a finding, the discipline that keeps
-FP=0 a structural property rather than an aspiration.
+\textbf{Commit-reveal, scoped.} A commitment and its reveal in the \emph{same} document prove
+nothing about ordering: checking $\mathrm{SHA\text{-}256}(\text{reveal})=\text{commitment}$ shows
+only that the submitter can compute SHA-256. An earlier revision claimed this arrangement
+prevented result grinding; we withdraw that. The implemented protocol separates registration from
+reveal and names its authority at each level: \emph{local commitment consistency} (arithmetic,
+offline, no ordering); \emph{repository ordering} (the registry record's introducing commit is a
+strict ancestor of the manifest's, forgeable by whoever owns the history); and
+\emph{precommitment verified} (the ordering witnessed by the forge's push record, which only CI
+can supply). Even at the top level this shows that one commitment predated one result. It does
+not show that every run was published: a submitter may register $N$ commitments and reveal one.
+All $N$ records remain visible, which is a deterrent and an audit trail, not a proof.
+
+\textbf{Attestation is separate.} An independent rerun is recorded as a repository-controlled
+artifact comparing \emph{run invariants} --- the per-task fired/ASR vector, the scores, the target
+fingerprint, the task-set digest --- rather than bytes, since a rerun legitimately mints a fresh
+secret. The verifier never emits it, and the leaderboard shows it in its own column.
+
+\section{Evaluation: conformance, not measurement}
+We evaluate the \emph{harness}, and we are explicit that this is not an evaluation of anything
+else. The runner is executed against three built-in deterministic in-process targets at $N=25$
+over all 31 tasks:
 
 \begin{table}[h]\centering
-\begin{tabular}{lcc}
+\begin{tabular}{lll}
 \toprule
-Target & Recall (fires) & Canary-gated FP \\
+Property & Target & Result \\
 \midrule
-Vulnerable reference & $31/31$ tasks & n/a \\
-Hardened control & n/a & $0/625$ (CI $\le 0.62\%$) \\
+Recall & \texttt{vulnerable} (built to comply) & every one of 31 tasks fires \\
+Specificity & \texttt{hardened} (built to refuse) & nothing fires; 0 canary FPs \\
+Discrimination & \texttt{mixed} (published subset) & fires on exactly that subset \\
 \bottomrule
 \end{tabular}
-\caption{Confusion-matrix summary, reference run, $N=25$.}
+\caption{Mechanism conformance, $N=25$, deterministic targets. Not a measurement of any real MCP
+server, agent or model.}
 \end{table}
+
+The third row matters and was absent from the earlier revision: with only a compliant and a
+refusing target, a harness that merely echoed a global ``vulnerable'' flag would score
+identically to one that evaluates each task. The mixed target, susceptible on a published subset,
+distinguishes them.
+
+We deliberately report \emph{no} confidence intervals here. The targets are deterministic, so each
+cell is exactly 0 or 1 and repeated trials are copies rather than independent draws; a Wilson
+interval over such a cell describes the trial count, not uncertainty about a population. The
+earlier revision reported $0/625$ with a Wilson bound of $0.62\%$, and we withdraw that framing:
+the 625 figure is $25$ tasks $\times\ 25$ identical trials against a stub we wrote.
 
 \section{Multimodal extension}
 The oracle's modality-independence yields a track no MCP benchmark has. Assay ships M20
@@ -127,19 +230,48 @@ steganographic chart canaries, image-resource rug-pulls, QR exfil) are all score
 canary at the boundary.
 
 \section{Limitations}
-Black-box adversarial-perturbation image hijacks are unmeasurable without gradients (reported
-inconclusive, never a leak); there is no white-box source-ingest mode yet; the over-refusal
-axis awaits benign twins; and a private held-out split (against public-set memorization) is on
-the roadmap, commit-reveal blocks result grinding, not task memorization.
+Stated plainly, because most of them are structural rather than temporary.
+
+\textbf{No real target has been scored.} There is no real MCP adapter in the released code. Every
+number in this paper is a property of the harness and its own stubs. The adapter interface exists
+and declares an \texttt{is\_real\_target} capability that the runner records in provenance and the
+leaderboard displays, but until a real adapter ships this is a gap, not a claim.
+
+\textbf{Verification is coherence, not attestation.} See \S4.1--4.2. A keyholder can fabricate a
+passing manifest; omission of findings is undetectable from the document alone.
+
+\textbf{Measured false negatives.} 15 of 22 tested egress transformations are missed, so scores
+are upper bounds on resistance.
+
+\textbf{Mixed evidence classes.} The headline numbers aggregate canary, protocol and behavioural
+tasks; only the first carries the cryptographic argument.
+
+\textbf{Public-set contamination.} The task set is public, so a model trained on the repository
+may have memorised it. No held-out split exists and none is currently run.
+
+\textbf{No utility axis in practice.} The over-refusal formula is implemented and tested, but no
+benign twin tasks are authored, so every shipped manifest reports a null value and no target has
+been measured on that axis.
+
+\textbf{Black-box perturbation hijacks} remain unmeasurable without gradients and are reported
+inconclusive, never as a leak. There is no white-box source-ingest mode.
 
 \section{Conclusion}
-Scoring MCP exfiltration by a recomputable cryptographic oracle replaces a judge's measured
-false positives with a structural zero, on a frozen, neutral, citable task set. That is the
-property that makes a benchmark canon, math anyone can re-verify, not a model's opinion.
+Deciding tool-boundary exfiltration by recomputing a keyed digest removes the grader, and its
+false positives, from the 25 canary-gated tasks. That is a real property and a narrow one. The
+part we think is worth carrying forward is not the primitive, which is inherited, but the
+discipline around it: publishing verification as named levels instead of a verdict, pinning each
+unreachable level as a passing adversarial test, and keeping coherence, precommitment ordering and
+independent rerun in three separate artifacts. A benchmark's credibility rests less on what its
+oracle proves than on whether its documentation stops there.
 
 \begin{thebibliography}{9}
 \bibitem{harmbench} Mazeika et al. \emph{HarmBench: A Standardized Evaluation Framework for Automated Red Teaming and Robust Refusal.} arXiv:2402.04249, 2024.
 \bibitem{strongreject} Souly et al. \emph{A StrongREJECT for Empty Jailbreaks.} arXiv:2402.10260, NeurIPS 2024.
 \bibitem{agentdojo} Debenedetti et al. \emph{AgentDojo: A Dynamic Environment to Evaluate Prompt Injection Attacks and Defenses for LLM Agents.} arXiv:2406.13352, NeurIPS 2024.
+\bibitem{mcpsecbench} Yang, Wu et al. \emph{MCPSecBench: A Systematic Security Benchmark and Playground for Testing Model Context Protocols.} arXiv:2508.13220, 2025.
+\bibitem{mcptox} Wang et al. \emph{MCPTox: A Benchmark for Tool Poisoning Attack on Real-World MCP Servers.} arXiv:2508.14925, AAAI 2026.
+\bibitem{msb} Zhang, Li et al. \emph{MCP Security Bench (MSB): Benchmarking Attacks Against Model Context Protocol in LLM Agents.} arXiv:2510.15994, 2025.
+\bibitem{mcpsafetybench} \emph{MCP-SafetyBench: A Benchmark for Safety Evaluation of Large Language Models with Real-World MCP Servers.} arXiv:2512.15163, ICLR 2026.
 \end{thebibliography}
 \end{document}

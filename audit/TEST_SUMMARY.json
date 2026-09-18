@@ -1,0 +1,31 @@
+{
+  "runner": "unittest (standard library); pytest also collects this suite",
+  "command": "python -m unittest discover -s tests -t .",
+  "tests_run": 207,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "expected_failures": 0,
+  "passed": true,
+  "duration_s": 16.62,
+  "tests_per_module": {
+    "tests.test_artifacts_and_docs": 22,
+    "tests.test_canary": 16,
+    "tests.test_catalog_and_scoring": 24,
+    "tests.test_demo": 13,
+    "tests.test_oracle_blind_spots": 4,
+    "tests.test_packaging": 10,
+    "tests.test_precommit": 24,
+    "tests.test_provenance_and_attest": 16,
+    "tests.test_runner": 20,
+    "tests.test_trust_boundary": 8,
+    "tests.test_verifier": 50
+  },
+  "third_party_dependencies": [],
+  "environment": {
+    "python": "3.11.15",
+    "implementation": "CPython",
+    "system": "Linux",
+    "machine": "x86_64"
+  }
+}

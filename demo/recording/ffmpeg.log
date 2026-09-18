@@ -1,0 +1,29 @@
+ffmpeg version n7.0.1-playwright-build-1011 Copyright (c) 2000-2024 the FFmpeg developers
+  built with gcc 9 (Ubuntu 9.4.0-1ubuntu1~20.04.2)
+  configuration: --pkg-config=pkg-config --pkg-config-flags=--static --extra-cflags=-I//root/prefix/include --extra-ldflags='-L//root/prefix/lib -static' --prefix=/root/prefix --bindir=/root/ffmpeg/bin --extra-version=playwright-build-1011 --disable-debug --disable-autodetect --disable-everything --enable-ffmpeg --enable-protocol=pipe --enable-protocol=file --enable-parser=mjpeg --enable-decoder=mjpeg --enable-demuxer=image2pipe --enable-filter=pad --enable-filter=crop --enable-filter=scale --enable-muxer=webm --enable-libvpx --enable-static --enable-encoder=libvpx_vp8 --enable-decoder=libvpx_vp8 --enable-demuxer=matroska --enable-encoder=png --enable-zlib --enable-muxer=image2 --disable-iconv --disable-bzlib
+  libavutil      59.  8.100 / 59.  8.100
+  libavcodec     61.  3.100 / 61.  3.100
+  libavformat    61.  1.100 / 61.  1.100
+  libavdevice    61.  1.100 / 61.  1.100
+  libavfilter    10.  1.100 / 10.  1.100
+  libswscale      8.  1.100 /  8.  1.100
+  libswresample   5.  1.100 /  5.  1.100
+Input #0, image2pipe, from 'pipe:0':
+  Duration: N/A, bitrate: N/A
+  Stream #0:0: Video: mjpeg (Baseline), yuvj420p(pc, bt470bg/unknown/unknown), 1920x1080 [SAR 1:1 DAR 16:9], 10 fps, 10 tbr, 10 tbn
+Stream mapping:
+  Stream #0:0 -> #0:0 (mjpeg (native) -> vp8 (libvpx))
+[swscaler @ 0x7f5ef80143c0] deprecated pixel format used, make sure you did set range correctly
+[swscaler @ 0x7f5ef8021a80] deprecated pixel format used, make sure you did set range correctly
+    Last message repeated 2 times
+[libvpx @ 0x21ef640] v1.14.1
+Output #0, webm, to '/home/user/assay/demo/out/assay-demo.webm':
+  Metadata:
+    encoder         : Lavf61.1.100
+  Stream #0:0: Video: vp8, yuv420p(progressive), 1920x1080 [SAR 1:1 DAR 16:9], q=2-31, 4000 kb/s, 10 fps, 1k tbn
+      Metadata:
+        encoder         : Lavc61.3.100 libvpx
+      Side data:
+        cpb: bitrate max/min/avg: 0/0/0 buffer size: 0 vbv_delay: N/A
+frame=   27 fps=0.0 q=4.0 size=       0KiB time=00:00:02.70 bitrate=   1.4kbits/s speed=5.37x    frame=   58 fps= 58 q=4.0 size=     222KiB time=00:00:05.80 bitrate= 313.0kbits/s speed=5.78x    frame=   63 fps= 42 q=4.0 size=     222KiB time=00:00:06.30 bitrate= 288.2kbits/s speed=4.19x    frame=   68 fps= 34 q=4.0 size=     222KiB time=00:00:06.80 bitrate= 267.0kbits/s speed=3.39x    frame=   73 fps= 29 q=4.0 size=     222KiB time=00:00:07.30 bitrate= 248.7kbits/s speed=2.92x    frame=   78 fps= 26 q=4.0 size=     222KiB time=00:00:07.80 bitrate= 232.8kbits/s speed= 2.6x    frame=   83 fps= 24 q=4.0 size=     222KiB time=00:00:08.30 bitrate= 218.7kbits/s speed=2.37x    frame=   88 fps= 22 q=4.0 size=     222KiB time=00:00:08.80 bitrate= 206.3kbits/s speed= 2.2x    frame=   93 fps= 21 q=4.0 size=     222KiB time=00:00:09.30 bitrate= 195.2kbits/s speed=2.06x    frame=   98 fps= 20 q=4.0 size=     222KiB time=00:00:09.80 bitrate= 185.3kbits/s speed=1.96x    frame=  103 fps= 19 q=4.0 size=     222KiB time=00:00:10.30 bitrate= 176.3kbits/s speed=1.87x    frame=  108 fps= 18 q=4.0 size=     512KiB time=00:00:10.80 bitrate= 388.4kbits/s speed= 1.8x    frame=  113 fps= 17 q=4.0 size=     512KiB time=00:00:11.30 bitrate= 371.2kbits/s speed=1.74x    frame=  118 fps= 17 q=4.0 size=     512KiB time=00:00:11.80 bitrate= 355.4kbits/s speed=1.68x    frame=  123 fps= 16 q=4.0 size=     512KiB time=00:00:12.30 bitrate= 341.0kbits/s speed=1.64x    frame=  128 fps= 16 q=4.0 size=     512KiB time=00:00:12.80 bitrate= 327.7kbits/s speed= 1.6x    frame=  133 fps= 16 q=4.0 size=     768KiB time=00:00:13.30 bitrate= 473.0kbits/s speed=1.56x    frame=  138 fps= 15 q=4.0 size=     768KiB time=00:00:13.80 bitrate= 455.9kbits/s speed=1.53x    frame=  143 fps= 15 q=4.0 size=     768KiB time=00:00:14.30 bitrate= 440.0kbits/s speed= 1.5x    frame=  148 fps= 15 q=4.0 size=     768KiB time=00:00:14.80 bitrate= 425.1kbits/s speed=1.48x    frame=  153 fps= 15 q=4.0 size=     768KiB time=00:00:15.30 bitrate= 411.2kbits/s speed=1.46x    frame=  158 fps= 14 q=4.0 size=     768KiB time=00:00:15.80 bitrate= 398.2kbits/s speed=1.44x    frame=  163 fps= 14 q=4.0 size=     768KiB time=00:00:16.30 bitrate= 386.0kbits/s speed=1.42x    frame=  168 fps= 14 q=4.0 size=     768KiB time=00:00:16.80 bitrate= 374.5kbits/s speed= 1.4x    frame=  173 fps= 14 q=4.0 size=     768KiB time=00:00:17.30 bitrate= 363.7kbits/s speed=1.38x    frame=  178 fps= 14 q=4.0 size=     768KiB time=00:00:17.80 bitrate= 353.5kbits/s speed=1.37x    frame=  183 fps= 14 q=4.0 size=    2048KiB time=00:00:18.30 bitrate= 916.8kbits/s speed=1.35x    frame=  188 fps= 13 q=4.0 size=    2048KiB time=00:00:18.80 bitrate= 892.4kbits/s speed=1.34x    frame=  193 fps= 13 q=5.0 size=    2048KiB time=00:00:19.30 bitrate= 869.3kbits/s speed=1.33x    frame=  198 fps= 13 q=4.0 size=    2048KiB time=00:00:19.80 bitrate= 847.3kbits/s speed=1.32x    frame=  203 fps= 13 q=4.0 size=    2048KiB time=00:00:20.30 bitrate= 826.5kbits/s speed=1.31x    frame=  208 fps= 13 q=4.0 size=    2048KiB time=00:00:20.80 bitrate= 806.6kbits/s speed= 1.3x    frame=  213 fps= 13 q=4.0 size=    2048KiB time=00:00:21.30 bitrate= 787.7kbits/s speed=1.29x    [out#0/webm @ 0x21bb840] video:3288KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.062454%
+frame=  216 fps= 13 q=4.0 Lsize=    3290KiB time=00:00:21.60 bitrate=1247.9kbits/s speed=1.29x    

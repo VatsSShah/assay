@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Assay demo terminal</title>
+<style>
+  :root {
+    --bg: #0b0e14; --fg: #cbd5e1; --dim: #64748b; --chrome: #131822; --edge: #1f2937;
+    --cyan: #38bdf8; --yellow: #fbbf24; --red: #f87171; --green: #4ade80; --mag: #c084fc;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); overflow: hidden; }
+  body { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; }
+  #frame { display: flex; flex-direction: column; height: 1080px; width: 1920px; }
+  #bar {
+    height: 56px; flex: 0 0 56px; background: var(--chrome); border-bottom: 1px solid var(--edge);
+    display: flex; align-items: center; padding: 0 22px; gap: 14px;
+  }
+  .dot { width: 14px; height: 14px; border-radius: 50%; }
+  #title { color: var(--fg); font-size: 20px; letter-spacing: .04em; }
+  #sub { color: var(--dim); font-size: 17px; margin-left: auto; }
+  #screen {
+    flex: 1 1 auto; overflow: hidden; padding: 18px 26px; position: relative;
+  }
+  #term {
+    margin: 0; color: var(--fg); font-size: 22px; line-height: 1.34;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .c { color: var(--cyan); font-weight: 700; }
+  .y { color: var(--yellow); font-weight: 700; }
+  .r { color: var(--red); font-weight: 700; }
+  .g { color: var(--green); }
+  .m { color: var(--mag); }
+  #cursor {
+    display: inline-block; width: 12px; height: 22px; background: var(--cyan);
+    vertical-align: -3px; animation: blink 1s steps(2, start) infinite;
+  }
+  @keyframes blink { to { visibility: hidden; } }
+  #footer {
+    flex: 0 0 46px; background: var(--chrome); border-top: 1px solid var(--edge);
+    display: flex; align-items: center; padding: 0 26px; color: var(--dim); font-size: 16px;
+    justify-content: space-between;
+  }
+  #warn { color: var(--yellow); }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="bar">
+    <span class="dot" style="background:#f87171"></span>
+    <span class="dot" style="background:#fbbf24"></span>
+    <span class="dot" style="background:#4ade80"></span>
+    <span id="title">assay — conformance run, verification, and tamper rejection</span>
+    <span id="sub" >bash demo/run_demo.sh</span>
+  </div>
+  <div id="screen"><pre id="term"></pre></div>
+  <div id="footer">
+    <span id="warn">Targets are built-in deterministic stubs — no live MCP server, agent or model.</span>
+    <span id="clock">t+0.0s</span>
+  </div>
+</div>
+<script>
+  const term = document.getElementById('term');
+  const clock = document.getElementById('clock');
+  const screen = document.getElementById('screen');
+  const CLASS = { '36': 'c', '33': 'y', '31': 'r', '32': 'g', '35': 'm' };
+
+  // Minimal SGR handling: enough for the colours run_demo.sh emits, and nothing more.
+  function render(text) {
+    const out = [];
+    let open = false;
+    const re = /\x1b\[([0-9;]*)m/g;
+    let last = 0, m;
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    while ((m = re.exec(text)) !== null) {
+      out.push(esc(text.slice(last, m.index)));
+      last = re.lastIndex;
+      const codes = m[1].split(';').filter(Boolean);
+      const colour = codes.find(c => CLASS[c]);
+      if (codes.includes('0') || codes.length === 0) {
+        if (open) { out.push('</span>'); open = false; }
+      } else if (colour) {
+        if (open) out.push('</span>');
+        out.push(`<span class="${CLASS[colour]}">`); open = true;
+      }
+    }
+    out.push(esc(text.slice(last)));
+    if (open) out.push('</span>');
+    return out.join('');
+  }
+
+  let buffer = '';
+  window.assayWrite = function (chunk, elapsed) {
+    buffer += chunk;
+    // Keep the tail that fits the viewport; a terminal scrolls, it does not grow forever.
+    const lines = buffer.split('\n');
+    if (lines.length > 220) buffer = lines.slice(-220).join('\n');
+    term.innerHTML = render(buffer) + '<span id="cursor"></span>';
+    clock.textContent = 't+' + elapsed.toFixed(1) + 's';
+    screen.scrollTop = screen.scrollHeight;
+    term.scrollIntoView({ block: 'end' });
+    // Keep the last line pinned to the bottom of the visible area.
+    const overflow = term.scrollHeight - screen.clientHeight + 36;
+    term.style.marginTop = overflow > 0 ? (-overflow) + 'px' : '0px';
+  };
+
+  window.assayTitle = function (text) {
+    document.getElementById('sub').textContent = text;
+  };
+
+  // The clock ticks on its own rather than only when output arrives, so the displayed time is
+  // the real age of the recorded process even while a command is thinking. It is the run's
+  // actual elapsed wall-clock, not an animation added to make frames differ.
+  let origin = null;
+  window.assayStart = function () { origin = Date.now(); };
+  setInterval(() => {
+    if (origin === null) return;
+    clock.textContent = 't+' + ((Date.now() - origin) / 1000).toFixed(1) + 's';
+  }, 100);
+</script>
+</body>
+</html>

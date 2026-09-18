@@ -1,14 +1,21 @@
 cff-version: 1.2.0
-message: "If you use Assay, please cite it."
-title: "Assay: A Canary-Oracle Benchmark for MCP Security"
+message: "If you use Assay, please cite it, and please cite it for what it is."
+title: "Assay: A Canary-Oracle Task Set and Result Format for MCP Security"
 abstract: >-
-  A frozen task set for Model Context Protocol (MCP) security, scored by a deterministic,
-  recomputable HMAC-canary oracle at the tool boundary, structural-zero false positives for
-  canary-gated tasks, in contrast to LLM-judge graders.
+  A frozen 31-task set for Model Context Protocol (MCP) security whose canary-gated results are
+  decided by recomputing an HMAC digest at the tool boundary rather than by a learned grader,
+  together with a runner, a levelled verifier, and an explicit written trust boundary. A hit on
+  a canary-gated task implies the planted tag was present in the observed egress, up to an HMAC
+  forgery; it does not establish that a run occurred, that the report is complete, or that the
+  commitment predated the run, and the verifier reports which of those levels a given result
+  reaches. Assay is not the first MCP security benchmark: MCPSecBench (arXiv:2508.13220),
+  MCPTox (arXiv:2508.14925), MSB (arXiv:2510.15994) and MCP-SafetyBench (arXiv:2512.15163)
+  precede it, and several execute against real MCP servers where Assay currently ships only
+  deterministic in-process conformance targets.
 authors:
   - name: "The Assay Authors"
 version: "0.1"
 license: MIT
-date-released: "2026-06-10"
+date-released: "2026-09-18"
 url: "https://github.com/VatsSShah/assay"
-keywords: [MCP, benchmark, LLM security, agent security, red-team]
+keywords: [MCP, benchmark, LLM security, agent security, red-team, canary token]

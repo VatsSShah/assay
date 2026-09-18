@@ -8,3 +8,8 @@ dist/
 .venv/
 venv/
 .DS_Store
+
+# Demo working directory. `demo/reset.sh` wipes it and `demo/run_demo.sh` rewrites it on every
+# run, so it must never be tracked: a demo run would otherwise dirty the tree and break the
+# `git diff --exit-code` gate. The published recording lives in demo/recording/ instead.
+demo/out/

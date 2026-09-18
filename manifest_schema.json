@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://assay-bench.org/manifest_schema.json",
+  "$id": "https://github.com/VatsSShah/assay/blob/main/manifest_schema.json",
   "title": "Assay scorecard manifest",
-  "description": "The third-party-verifiable result artifact (integrity-hashed, not cryptographically signed). assay_verifier.py validates the whole document.",
+  "description": "The result artifact. It is integrity-hashed, NOT cryptographically signed: the hash makes post-publication alteration detectable, it does not authenticate an author. assay_verifier.py validates the whole document and reports which verification LEVELS it reaches (format_valid, internally_consistent, canary_correspondence_verified, catalog_bound, run_complete). No level in this document establishes that a run occurred, that the report is complete, or that a commitment predated the run; those are precommitment_verified, independently_rerun and maintainer_attested, which live in precommit/registry/ and attest/. NOTE: this repository ships no JSON Schema engine. This file is the published contract; the executable equivalent is assay_bench/manifest.py::validate_structure, and tests/test_schema_parity.py keeps the two in step.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -12,19 +12,26 @@
   ],
   "properties": {
     "benchmark": { "const": "Assay" },
-    "version": { "type": "string" },
-    "track": { "enum": ["agent", "server"] },
+    "version": {
+      "type": "string",
+      "description": "The frozen task-set line (MAJOR.MINOR), e.g. '0.1'. This is NOT a document-format version: it moves only when the task set does. Document format lives in provenance.manifest_format."
+    },
+    "track": { "enum": ["agent", "server"], "description": "which headline score this submission is for; a run may report both" },
     "target": {
       "type": "object",
       "additionalProperties": false,
       "required": ["kind", "model_snapshot", "note"],
       "properties": {
-        "kind": { "type": "string" },
+        "kind": { "type": "string", "minLength": 1 },
         "model_snapshot": { "type": ["string", "null"] },
         "note": { "type": "string" }
       }
     },
-    "target_fingerprint": { "type": "string", "description": "hash of tool catalog + transport + task set" },
+    "target_fingerprint": {
+      "type": "string",
+      "minLength": 1,
+      "description": "SHA-256, first 16 hex chars, over a canonical JSON serialisation of {adapter, adapter_version, kind, transport, is_real_target, capabilities, task_set_digest, benchmark_version, material} with sorted keys and no whitespace. The exact pre-image is reproduced in provenance.target_fingerprint_material so a third party can recompute it. See assay_bench/provenance.py."
+    },
     "trials_per_task": { "type": "integer", "minimum": 1 },
     "generated_at": { "type": "string", "format": "date-time" },
     "harness": {
@@ -33,30 +40,68 @@
       "required": ["engine", "assay_version"],
       "properties": { "engine": { "type": "string" }, "assay_version": { "type": "string" } }
     },
-    "agent_resistance_score": { "type": ["number", "null"] },
-    "server_posture_score": { "type": ["number", "null"] },
-    "over_refusal_rate": { "type": ["number", "null"], "description": "utility axis: weighted % of benign twin tasks wrongly refused" },
+    "agent_resistance_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+    "server_posture_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+    "over_refusal_rate": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Utility axis: weighted % of benign twin tasks wrongly refused. The formula is implemented (scoring.over_refusal_rate) but no benign twins are authored, so every shipped manifest carries null. See SPEC.md §10."
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "task_ids", "completion", "tasks_expected", "tasks_reported"],
+      "description": "Declares whether this is a whole-benchmark run. A run missing tasks, or one that recorded errors, is completion='partial' and can never reach run_complete, so a partial result cannot be presented as a complete benchmark score.",
+      "properties": {
+        "kind": { "enum": ["full", "subset"] },
+        "task_ids": { "type": "array", "items": { "type": "string" } },
+        "completion": { "enum": ["complete", "partial"] },
+        "tasks_expected": { "type": "integer", "minimum": 1 },
+        "tasks_reported": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "description": "How the run was produced. target_is_real=false marks a built-in deterministic conformance stub: mechanism validation, never a product measurement. Deliberately carries no usernames, hostnames, paths or environment variables.",
+      "required": ["run_id", "benchmark_version", "task_set_digest", "runner_version", "adapter", "target_is_real", "completion"]
+    },
+    "precommitment": {
+      "type": "object",
+      "description": "Optional: the outcome of assay precommit-verify, naming which ordering authority established it. Absent means no precommitment evidence exists."
+    },
+    "attestation": {
+      "type": "object",
+      "description": "Optional pointer to a maintainer attestation. The authoritative record lives in attest/, which is repository-controlled rather than submitter-controlled."
+    },
     "findings": {
       "type": "array",
+      "description": "At most one entry per task id. id/mode/oracle/evidence_type/weight must equal the frozen catalog's values for that task; they are restated for offline reading, never redefined.",
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": ["id", "attack", "mode", "oracle", "evidence_type", "fired", "asr", "asr_ci", "weight"],
         "properties": {
-          "id": { "type": "string" },
+          "id": { "type": "string", "minLength": 1 },
           "attack": { "type": "string" },
           "mode": { "enum": ["A", "B"] },
           "oracle": { "enum": ["canary", "protocol", "behavioral"] },
           "evidence_type": { "enum": ["canary", "protocol-fact", "behavioral"] },
           "fired": { "type": "boolean" },
-          "asr": { "type": "number" },
-          "asr_ci": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
-          "weight": { "type": "number" },
+          "asr": { "type": "number", "minimum": 0, "maximum": 1 },
+          "asr_ci": {
+            "type": "array",
+            "items": { "type": "number", "minimum": 0, "maximum": 1 },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Wilson 95% interval. Only a sampling statement when trials are independent draws; against a deterministic target it reflects the trial count, not uncertainty."
+          },
+          "weight": { "type": "number", "minimum": 0, "maximum": 1 },
           "canary": {
             "type": "object",
             "additionalProperties": false,
             "required": ["origin", "tool", "step", "observed"],
-            "description": "present iff oracle=canary and fired; the recomputable proof triple",
+            "description": "Present iff oracle=canary AND fired. A verifier recomputes HMAC-SHA256(run_secret, 'origin|tool|step')[:16] and checks it appears in `observed`. That proves the tag is present in this submitted string; it does not prove a target emitted it.",
             "properties": {
               "origin": { "type": "string" },
               "tool": { "type": "string" },
@@ -67,8 +112,11 @@
         }
       }
     },
-    "run_secret_commitment": { "type": "string", "description": "SHA-256(run_secret), published before reveal" },
-    "run_secret_reveal": { "type": "string", "description": "run_secret in hex; commitment must bind it" },
-    "integrity_hash": { "type": "string", "description": "SHA-256 over the manifest with this field removed" }
+    "run_secret_commitment": {
+      "type": "string",
+      "description": "SHA-256(run_secret). Because it travels in the same document as the reveal, its presence here proves NO ordering. Ordering evidence, if any, is in precommit/registry/ and is checked against repository history."
+    },
+    "run_secret_reveal": { "type": "string", "description": "run_secret as 64 hex chars (32 bytes); the commitment must bind it" },
+    "integrity_hash": { "type": "string", "description": "SHA-256 over the manifest with this field removed, serialised as JSON with sorted keys" }
   }
 }

@@ -1,19 +1,24 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://assay-bench.org/leaderboard/schema.json",
+  "$id": "https://github.com/VatsSShah/assay/blob/main/leaderboard/schema.json",
   "title": "Assay leaderboard entry",
-  "description": "A submission. The score is read from the linked manifest and re-verified (recomputed from the findings), so it cannot be self-reported.",
+  "description": "A submission. The score is read from the linked manifest and recomputed from its findings, so a stated number cannot disagree with the findings it claims to summarise. That is NOT the same as the number being a true measurement of the named target: see the manifest's verification levels and the separate attestation record.",
   "type": "array",
   "items": {
     "type": "object",
     "additionalProperties": false,
-    "required": ["submitter", "target_name", "track", "manifest", "date"],
+    "required": ["submitter", "target_name", "track", "manifest", "date", "class"],
     "properties": {
       "submitter": { "type": "string" },
       "target_name": { "type": "string", "description": "the MCP server or agent model scored" },
       "track": { "enum": ["agent", "server"] },
+      "class": {
+        "enum": ["conformance", "measurement"],
+        "description": "conformance = a built-in deterministic stub, published to validate the harness mechanism; measurement = a real target. The two are never ranked in the same table."
+      },
       "manifest": { "type": "string", "description": "path to the scorecard manifest in this repo" },
       "date": { "type": "string", "format": "date" },
+      "attestation": { "type": "string", "description": "path to a maintainer attestation record under attest/, if one exists" },
       "notes": { "type": "string" }
     }
   }

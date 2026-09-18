@@ -36,9 +36,18 @@ def build() -> str:
         rows.append(f"| {t['id']} | {t['title']} | {t['mode']} | {t['oracle']} | " + " | ".join(cells) + " |")
     return (
         "# Assay coverage matrix\n\n"
-        f"{len(TASKS)} frozen tasks. Mode A = MCP server under test; Mode B = agent under test. "
-        "Oracle `canary` = structural-zero-FP cryptographic proof. Mappings are rendered from the "
-        "engine's verified crosswalk, no id is hand-copied.\n\n"
+        f"{len(TASKS)} frozen tasks. Mode A = MCP server under test; Mode B = agent under test.\n\n"
+        "**Oracle column.** `canary` means a hit is decided by recomputing an HMAC digest "
+        "rather than by a grader, so a *spurious* hit would require forging a 64-bit tag "
+        "without the run secret (SPEC.md §4). It does not mean the task has no false "
+        "*negatives*: egress that splits, re-encodes outside the four frozen forms, "
+        "compresses, encrypts or paraphrases the digest is missed, and those blind spots are "
+        "measured in `audit/CLAIM_EVIDENCE_MATRIX.md`. `protocol` and `behavioral` tasks are "
+        "deterministic but carry no cryptographic guarantee at all, and the headline scores "
+        "aggregate all three classes.\n\n"
+        "Mappings are rendered from the crosswalk in `tasks.json`; no id is hand-copied into "
+        "this file. They are our reading of each taxonomy, not an endorsement by its "
+        "publisher.\n\n"
         + "\n".join(rows) + "\n"
     )
 

@@ -1,24 +1,127 @@
 name: assay
+
 on: [push, pull_request]
 
 jobs:
-  verify:
+  # The core job installs nothing. If this ever needs a third-party package, the
+  # "standard library alone" claim in README and CONTRIBUTING is no longer true.
+  stdlib:
+    name: stdlib only (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # precommitment ordering is read from git history
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Test suite (unittest, no third-party runner)
+        run: python -m unittest discover -s tests -t . -v
+
+      - name: Verify every shipped manifest reaches every level
+        run: |
+          for m in leaderboard/manifests/*.json; do
+            echo "== $m"
+            python assay_verifier.py verify "$m" --require run_complete
+          done
+
+      - name: Legacy v0.1 manifests must still verify
+        run: |
+          for m in tests/fixtures/legacy_v0_1/reference_*.json; do
+            python assay_verifier.py verify "$m" --require internally_consistent
+          done
+
+      - name: Tampering must be rejected with a stable non-zero exit
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          m = json.loads(pathlib.Path("leaderboard/manifests/reference_vulnerable.json").read_text())
+          next(f for f in m["findings"] if "canary" in f)["canary"]["observed"] = "TAMPERED"
+          pathlib.Path("/tmp/tampered.json").write_text(json.dumps(m))
+          PY
+          if python assay_verifier.py verify /tmp/tampered.json; then
+            echo "::error::a tampered manifest verified"; exit 1
+          fi
+          python assay_verifier.py verify /tmp/tampered.json; test $? -eq 1
+
+      - name: Assertions disabled must not weaken any check
+        run: |
+          if python -O assay_verifier.py verify /tmp/tampered.json; then
+            echo "::error::python -O turned a rejection into an acceptance"; exit 1
+          fi
+
+  generated:
+    name: generated files are current
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      # The whole standard runs on the standard library alone, no install step needed.
-      - name: Verify reference scorecards (stdlib only)
+
+      - name: Regenerate everything
         run: |
-          python assay_verifier.py leaderboard/manifests/reference_vulnerable.json
-          python assay_verifier.py leaderboard/manifests/reference_hardened.json
-      - name: Re-verify + rebuild leaderboard (every entry's manifest must verify)
-        run: python leaderboard/build_site.py
-      - name: Render coverage matrix
-        run: python coverage.py
-      - name: Verifier tests
+          python -m assay_bench.sync_data
+          python coverage.py
+          python leaderboard/build_site.py
+          python -m assay_bench reference
+
+      - name: Fail if any generated file is stale
+        run: git diff --exit-code
+
+      - name: Reference invariants survive a fresh run
+        run: python -m assay_bench reference --check
+
+  packaging:
+    name: wheel builds, installs, and runs from outside the checkout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build the wheel
         run: |
-          python -m pip install --quiet pytest
-          python -m pytest tests/ -q
+          python -m pip install --quiet build
+          python -m build --wheel
+
+      - name: Install it into a clean virtualenv
+        run: |
+          python -m venv /tmp/venv
+          /tmp/venv/bin/pip install --quiet dist/*.whl
+
+      - name: Smoke-test the CLIs from a directory that is not the checkout
+        run: |
+          cd /tmp
+          /tmp/venv/bin/assay --help
+          /tmp/venv/bin/assay-bench --help
+          /tmp/venv/bin/assay levels
+          /tmp/venv/bin/assay run --target vulnerable --trials 5 --out /tmp/sc.json
+          /tmp/venv/bin/assay verify /tmp/sc.json --require run_complete
+
+      - name: The packaged task set must match the canonical one
+        run: |
+          /tmp/venv/bin/python -c "
+          import json, pathlib, assay_bench.catalog as c
+          cat = c.load_catalog()
+          print('tasks', len(cat), 'digest', cat.digest)
+          assert len(cat) == 31
+          "
+
+  optional-pytest:
+    name: pytest also collects the suite (optional)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --quiet pytest
+      - run: python -m pytest tests/ -q
