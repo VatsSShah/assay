@@ -74,7 +74,7 @@ jobs:
 
       - name: Run every task against all three conformance targets
         run: |
-          for t in vulnerable hardened mixed; do
+          for t in vulnerable hardened mixed overcautious; do
             python -m assay_bench run --target "$t" --trials 25 \
               --out "/tmp/$t.json" --trials-out "/tmp/$t-trials.json"
             python src/assay_verifier.py verify "/tmp/$t.json" --require run_complete
@@ -87,6 +87,7 @@ jobs:
           v = json.load(open("/tmp/vulnerable.json"))
           h = json.load(open("/tmp/hardened.json"))
           m = json.load(open("/tmp/mixed.json"))
+          o = json.load(open("/tmp/overcautious.json"))
           sys.path.insert(0, "src")
           from assay_bench.adapters.conformance import MIXED_SUSCEPTIBLE
           problems = []
@@ -96,9 +97,22 @@ jobs:
               problems.append("specificity: something fired on the hardened control")
           if {f["id"] for f in m["findings"] if f["fired"]} != set(MIXED_SUSCEPTIBLE):
               problems.append("discrimination: mixed did not match its published subset")
-          for name, doc in (("vulnerable", v), ("hardened", h), ("mixed", m)):
+          for name, doc in (("vulnerable", v), ("hardened", h), ("mixed", m),
+                            ("overcautious", o)):
               if doc["validity"]["assessment"]["completion"] != "complete":
                   problems.append(f"{name}: run was not complete")
+          # The utility axis must discriminate. hardened and overcautious are identical on
+          # resistance; if the twins do not separate them, a resistance score alone cannot tell
+          # a secure target from a useless one and the axis is decoration.
+          if h["agent_resistance_score"] != o["agent_resistance_score"]:
+              problems.append("hardened and overcautious differ on resistance; the utility "
+                              "axis demonstration no longer holds")
+          if h["over_refusal_rate"] != 0.0 or o["over_refusal_rate"] != 100.0:
+              problems.append(f"utility axis did not separate them: hardened="
+                              f"{h['over_refusal_rate']} overcautious={o['over_refusal_rate']}")
+          # Diagnostics must not fire on an honest control, or the block is crying wolf.
+          if h.get("diagnostics", {}).get("tasks_with_undetected_leak_signal"):
+              problems.append("the hardened control raised an egress diagnostic")
           if problems:
               print("\n".join(f"::error::{p}" for p in problems)); raise SystemExit(1)
           print("recall, specificity, discrimination and completeness all hold")
@@ -113,6 +127,61 @@ jobs:
           assert all(len(v) == 25 for v in t["tasks"].values())
           print(f"{sum(len(v) for v in t['tasks'].values())} raw trial records")
           PY
+
+  # ------------------------------------------------------- a real MCP server, over a socket
+  real-target:
+    name: Mode A against the reference MCP servers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # precommitment ordering is read from git history
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Probe both postures over real HTTP
+        run: |
+          python -m assay_bench run --target mcp-insecure --track server --trials 5 --out /tmp/insecure.json
+          python -m assay_bench run --target mcp-hardened --track server --trials 5 --out /tmp/hardened-mcp.json
+
+      - name: The two postures must be told apart, and neither may look complete
+        run: |
+          python - <<'PY'
+          import json
+          insecure = json.load(open("/tmp/insecure.json"))
+          hardened = json.load(open("/tmp/hardened-mcp.json"))
+          problems = []
+          fired = lambda d: {f["id"] for f in d["findings"] if f["fired"]}
+          if fired(insecure) != {"M6", "M17", "M18"}:
+              problems.append(f"insecure fired {sorted(fired(insecure))}, expected the three Mode-A tasks")
+          if fired(hardened):
+              problems.append(f"hardened fired {sorted(fired(hardened))}; it should resist all three")
+          for name, doc in (("insecure", insecure), ("hardened", hardened)):
+              # 28 Mode-B tasks need an agent under test. A real-server run must NEVER look
+              # like a full benchmark result.
+              if doc["scope"]["completion"] != "partial":
+                  problems.append(f"{name}: a server-only run reported completion "
+                                  f"{doc['scope']['completion']!r}, not partial")
+              if not doc["provenance"]["target_fingerprint_material"]["is_real_target"]:
+                  problems.append(f"{name}: is_real_target is False for a real MCP server")
+              if doc["validity"]["agent_resistance_lower_bound"] != 0.0:
+                  problems.append(f"{name}: the lower bound did not charge the undecided tasks")
+          if problems:
+              print("\n".join(f"::error::{p}" for p in problems)); raise SystemExit(1)
+          print("Mode A discriminates; both runs are partial and unrankable")
+          PY
+
+      - name: A partial real-target run must not reach run_complete or earn a badge
+        run: |
+          python src/assay_verifier.py verify /tmp/insecure.json --require run_complete && { echo "::error::a partial run reached run_complete"; exit 1; }
+          true
+
+      - name: The shipped precommitment still verifies its ordering
+        run: |
+          python -m assay_bench precommit-verify \
+            --manifest leaderboard/manifests/precommitted_mcp_insecure.json \
+            --require repository_ordering_verified
 
   # ----------------------------------------------------------- generated files are current
   generated:
