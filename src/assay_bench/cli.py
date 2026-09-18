@@ -307,19 +307,24 @@ def cmd_reference(args) -> int:
 # ------------------------------------------------------------------------ precommit
 
 def cmd_precommit(args) -> int:
-    from .adapters.conformance import build as build_builtin
     from .catalog import load_catalog
     from .canary import new_run_secret
     from .precommit import REGISTRY_DIRNAME, create_record
     from .provenance import target_fingerprint
 
     catalog = load_catalog(args.tasks)
-    adapter = build_builtin(args.target)
-    secret = args.run_secret or new_run_secret()
-    record = create_record(run_secret=secret, benchmark_version=catalog.version,
-                           task_set_digest=catalog.digest,
-                           target_fingerprint=target_fingerprint(adapter, catalog),
-                           trials=args.trials, note=args.note or "")
+    # The same resolver `assay run` uses. A commitment names a target fingerprint, and that
+    # fingerprint has to be the one the run will produce -- so a precommitment for an MCP
+    # target must be able to reach the target and ask it who it is, exactly as the run does.
+    adapter, stop_target, _ = _build_target(args)
+    try:
+        secret = args.run_secret or new_run_secret()
+        record = create_record(run_secret=secret, benchmark_version=catalog.version,
+                               task_set_digest=catalog.digest,
+                               target_fingerprint=target_fingerprint(adapter, catalog),
+                               trials=args.trials, note=args.note or "")
+    finally:
+        stop_target()
     registry = Path(args.registry or (REPO / REGISTRY_DIRNAME))
     _write(registry / f"{record['run_id']}.json", record)
     if args.secret_out:
@@ -435,7 +440,12 @@ def build_parser() -> argparse.ArgumentParser:
     ref.set_defaults(func=cmd_reference)
 
     pc = sub.add_parser("precommit", help="register a pre-run commitment")
-    pc.add_argument("--target", default="vulnerable")
+    pc.add_argument("--target", default="vulnerable",
+                    help="same targets as `assay run`, including mcp-insecure / mcp-hardened")
+    pc.add_argument("--target-url", help="same as `assay run --target-url`")
+    pc.add_argument("--target-command", help="same as `assay run --target-command`")
+    pc.add_argument("--target-token", help="same as `assay run --target-token`")
+    pc.add_argument("--timeout", type=float, default=10.0)
     pc.add_argument("--trials", type=int, default=25)
     pc.add_argument("--run-secret")
     pc.add_argument("--secret-out")

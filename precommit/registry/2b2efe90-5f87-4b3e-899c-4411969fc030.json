@@ -1,0 +1,17 @@
+{
+  "schema": "assay/precommit-record/1",
+  "run_id": "2b2efe90-5f87-4b3e-899c-4411969fc030",
+  "commitment": "75889149ffd4f5fe8ab8d7680d264098b5c9275e517384c2e492ed53cc775ed3",
+  "benchmark_version": "0.1",
+  "task_set_digest": "e8a6e47520e38b0e4e03fe5ef408f8f5ff1eaf11549a9dced2c76273877bb81b",
+  "target_fingerprint": "2f4b1267c3751586",
+  "trial_plan": {
+    "trials_per_task": 5,
+    "scope": "full"
+  },
+  "nonce": "b707a03104644628ac67fbbd2e8c7749",
+  "created_at_submitter_clock": "2026-09-18T10:02:29.766977+00:00",
+  "note": "worked example: a real precommitted run against this repository's reference MCP server, registered in its own earlier commit",
+  "bound_manifest_integrity_hash": null,
+  "record_digest": "036c2075ab94d1f93a375dae380085d9e94beeaaadff62a7dfc22b972417c40b"
+}
