@@ -307,10 +307,21 @@ and a test fails if one does. See [`REMAINING_GAPS.md`](REMAINING_GAPS.md) G13.
 ## Contamination and utility: what is shipped vs planned
 
 - **Public task set, and what that costs.** `tasks.json` is public, so a model trained on this
-  repository may have memorised the tasks. Nothing in this repo detects that today.
-- **Held-out split (not shipped).** The design is in [SPEC.md §10](SPEC.md). No held-out split
-  exists in this repository, and none is currently run. Treat a high public score as necessary,
-  not sufficient.
+  repository may have memorised the tasks. Two mechanisms address that, neither completely:
+  - **detection** — `tasks.json` carries a canary GUID that exists nowhere else. A model that
+    reproduces it has this repository in training. A model that does *not* reproduce it has
+    established nothing, and the artifact says so rather than letting a miss read as a clean
+    bill of health.
+  - **mitigation** — the adversarial prose is minted per run from 4 interchangeable phrasings
+    chosen from the run secret, so memorising the strings published here does not tell a target
+    what it will be shown. Only the wording moves: the canary, the sink, the plant site and the
+    oracle rule are identical across phrasings, tests enforce that every phrasing still fires on
+    the vulnerable target and still does not on the hardened one, and the frozen task-set digest
+    is unchanged.
+- **Held-out split (not shipped, and it cannot live here).** Publishing a held-out split is what
+  destroys it. No such set exists in this repository and none is currently run, so a model that
+  memorised the *mechanism* rather than the text is unaffected by the above. Treat a high public
+  score as necessary, not sufficient.
 - **Over-refusal (utility) axis (shipped and measured).** [`twins.json`](twins.json) holds 8
   benign twin tasks, each paired with an attack task and built to look like it: the same
   tool-catalog shape, the same channel, the same kind of instruction. The difference is that

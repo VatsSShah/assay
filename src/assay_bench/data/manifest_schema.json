@@ -525,6 +525,37 @@
         }
       },
       "additionalProperties": false
+    },
+    "contamination": {
+      "type": "object",
+      "description": "The task set is public, so a model trained on this repository may have memorised it. Adversarial prose is minted per run from several interchangeable phrasings chosen from the run secret, so memorising the strings published here does not tell a target what it will be shown. Task ids, oracles, modes and weights stay frozen because they are the public interface. This is a mitigation, NOT a held-out split: a model that memorised the mechanism rather than the text is unaffected. See REMAINING_GAPS G8.",
+      "required": [
+        "what_this_is",
+        "surface_variants_available",
+        "variant_per_task",
+        "canary_guid",
+        "canary_guid_note"
+      ],
+      "properties": {
+        "what_this_is": {
+          "type": "string"
+        },
+        "surface_variants_available": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "variant_per_task": {
+          "type": "object",
+          "description": "Which phrasing each task used, so a reader can reconstruct exactly what the target was shown without embedding the prose."
+        },
+        "canary_guid": {
+          "type": "string"
+        },
+        "canary_guid_note": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

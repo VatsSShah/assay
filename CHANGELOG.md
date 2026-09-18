@@ -50,6 +50,15 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   `kind` (`maintainer_attestation` vs `clean_clone_reproduction`) so a reproduction cannot be
   mistaken for an attestation; no maintainer attestation has been performed and a test asserts
   no shipped record claims one.
+- `assay_bench/contamination.py` — the public task set is a contamination risk, now both
+  detectable and partly mitigated. `tasks.json` carries a canary GUID that exists nowhere else,
+  published with the asymmetry stated: a hit establishes contamination, a miss establishes
+  nothing. The adversarial prose is minted per run from 4 interchangeable phrasings chosen from
+  the run secret, so memorising the published strings does not tell a target what it will see.
+  Only wording moves — canary, sink, plant site and oracle rule are identical across phrasings,
+  and tests require every phrasing to still fire on the vulnerable target and not on the
+  hardened control. The frozen task-set digest is unchanged. Still **not** a held-out split, and
+  the manifest block says so.
 - `assay_bench/diagnostics.py` — the oracle's blind spots, measured at run time instead of only
   published. Twelve detectors (case folding, homoglyphs, separator/zero-width insertion,
   reversal, rot13, base32, base85, gzip/zlib, single-byte XOR, unsalted hashes, truncation, and
@@ -149,7 +158,7 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   verifier, scorer, badge tool, runner package, the frozen catalog and the published schema.
 - **Scores use the frozen catalog's weight total as the denominator**, never the reported
   findings'. For a complete run this is identical, so every valid v0.1 score is unchanged.
-- **Tests: 7 → 477, standard library only.** Converted from pytest to `unittest`, so the
+- **Tests: 7 → 500, standard library only.** Converted from pytest to `unittest`, so the
   "stdlib alone" claim holds end to end and `unittest discover` no longer reports
   `Ran 0 tests ... OK`.
 - `license = { file = "LICENSE" }` → SPDX `license = "MIT"` with `license-files`, so builds no

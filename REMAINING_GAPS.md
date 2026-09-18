@@ -283,14 +283,65 @@ submission, recorded with `kind: maintainer_attestation`. That is a person's act
 
 ---
 
-## G8 — Held-out split: designed, not built
+## G8 — Contamination: detectable and mitigated. A held-out split still does not exist.
 
-**Status: open.**
+**Status: two real mechanisms shipped. The gap they do not close is named, and it is the
+important one.**
 
-`tasks.json` is public, so a model trained on this repository may have memorised it. Nothing here
-detects that. The v0.1 wording ("a held-out split … *is maintained separately*") asserted
-something exists; it was narrowed to "no held-out split exists in this repository and none is
-currently run."
+`tasks.json` is public, so a model trained on a crawl of GitHub may have memorised the task set
+and the exact adversarial prose. A memorised benchmark scores well without being safer. Through
+v0.2 nothing here detected or mitigated that; the v0.1 wording ("a held-out split … *is
+maintained separately*") asserted something that did not exist and was narrowed to say so.
+
+### Detection: a canary GUID
+
+`tasks.json` carries `assay-benchmark-canary:1f0c7a4e-…`, a string that exists in this repository
+and, by intention, nowhere else. A model that reproduces it verbatim has this repository in its
+training data. The technique is the one BIG-bench uses.
+
+Both directions are published with it, because the asymmetry is the whole point:
+
+- a **hit** establishes contamination — the score measures memorisation as well as safety, and
+  the two cannot be separated after the fact;
+- a **miss establishes nothing.** A model may have trained on this repository and still decline
+  to emit the GUID, because it was filtered, because the model refuses to repeat identifiers, or
+  because it never memorised that particular string. `contamination.CANARY_SEMANTICS` says this
+  in the artifact, and a test asserts the wording stays.
+
+A test also checks the GUID has not spread beyond the three places it belongs, since a string
+scattered through the tree is harder to keep unique and to reason about.
+
+### Mitigation: per-run surface variation
+
+The adversarial prose is no longer a fixed string. Each surface has **4 interchangeable
+phrasings**, chosen per `(run secret, task)` by HMAC. Memorising the strings published here
+therefore does not tell a target what it will be shown: the choice depends on 32 random bytes
+minted after this repository was written.
+
+What moves is wording only. The canary, the sink, the plant site and the oracle rule are
+identical across phrasings, and tests enforce it: every phrasing must still fire on the
+vulnerable target and still not fire on the hardened control, the canary preimage and plant site
+must be unchanged, no image phrasing may carry the canary in its text, and selection must spread
+evenly across the variants. Task ids, oracles, modes and weights stay frozen — they are the
+public interface — so the task-set digest is unchanged and every published score stays
+comparable. Reference runs use a published fixed secret, so they remain byte-reproducible.
+
+Each manifest records which phrasing every task used, so a reader can reconstruct exactly what
+the target saw without the document embedding the prose.
+
+### What neither mechanism does
+
+A model that memorised the **mechanism** rather than the text is unaffected by variation; four
+phrasings is a 1-in-4 chance of a given memorised string matching, not a defence. The GUID
+detects a particular kind of contamination and misses the rest. And nothing here is a held-out
+split.
+
+**A held-out split cannot live in a public repository** — publishing it is what destroys it. So
+this gap does not close here: it would need a private task set held by whoever runs the
+leaderboard, with only its digest published. No such set exists and none is currently run. The
+manifest block says `NOT a held-out split` in its own text, and a test fails the build if any
+document starts claiming one is maintained. **Treat a high public score as necessary, not
+sufficient.**
 
 ---
 
@@ -356,19 +407,39 @@ belongs with whoever operates the target.
 
 ## G11 — The related-work comparison rests on secondary sources
 
-**Status: open, and disclosed in place.**
+**Status: open, disclosed in place, and re-checked. The blocker is environmental, not a
+decision.**
 
-`arxiv.org` is blocked by the audit container's egress proxy, and this session's GitHub access is
-scoped to `VatsSShah/assay`, so the four prior benchmarks' papers were not fetched and their
-repositories were not cloned. Titles, arXiv identifiers, dates, execution models, scale figures
-and artifact locations come from published records retrieved by web search.
+SPEC §1 compares Assay to four prior MCP security benchmarks. The papers were never read: the
+titles, arXiv identifiers, dates, execution models and artifact locations come from published
+records retrieved by search, not from the papers.
 
-That is enough to establish the claim that matters — **these works predate Assay and released
-artifacts, so the "open wedge" framing is false** — and not enough for a task-by-task mechanism
-comparison. SPEC §1 says so in place rather than implying deeper engagement than occurred.
+**Re-checked on 2026-09-18.** Every route to a primary source is blocked by this environment's
+egress proxy:
 
-**What would close it:** read the four papers directly and extend SPEC §1 with a per-attack-family
-mapping against the 31 frozen tasks.
+| source | result |
+|---|---|
+| `arxiv.org` | blocked (CONNECT tunnel refused, 403) |
+| `ar5iv.labs.arxiv.org` | blocked |
+| `www.alphaxiv.org` | blocked |
+| `semanticscholar.org`, `api.semanticscholar.org` | unreachable |
+| `paperswithcode.co` | unreachable |
+| `huggingface.co`, `openreview.net` | unreachable |
+
+Search results are reachable and carry more detail than SPEC §1 currently states. **That detail
+has deliberately not been added.** A search summary is further from the source than the citation
+record already published, and writing more specific claims on weaker evidence is precisely the
+failure this audit exists to correct. SPEC §1 says what the retrieved records support and no
+more.
+
+The claim that actually matters is unaffected and well-supported: **these works predate Assay
+and released artifacts, so the v0.1 "open wedge" framing was false.** That framing is withdrawn
+and banned by test. What is missing is the finer comparison — a per-attack-family mapping of
+each prior benchmark against the 31 frozen tasks — which needs the papers themselves.
+
+**What would close it:** read the four papers from an environment with network access to arXiv,
+and extend SPEC §1 with that mapping. Roughly an hour of work for someone unblocked; not
+something to approximate from summaries.
 
 ---
 

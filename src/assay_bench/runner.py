@@ -23,7 +23,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # src/, for `scoring`
 
-from . import RUNNER_VERSION, diagnostics, provenance, validity
+from . import RUNNER_VERSION, contamination, diagnostics, provenance, validity
 from .adapters import Episode, supports
 from .canary import commitment, new_run_secret, parse_secret
 from .catalog import Catalog, load_catalog
@@ -428,6 +428,7 @@ def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials
             "retries": all_retries,
             "raw_trials_recorded": sum(len(o.trials) for o in outcomes),
         },
+        "contamination": contamination.report(run_secret, catalog),
         **({"utility": utility} if utility else {}),
         **({"diagnostics": diagnostics.summarise(task_diagnostics)}
            if diagnose else {}),
