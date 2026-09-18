@@ -30,10 +30,11 @@ TRACK_MODE = {"agent": "B", "server": "A"}
 #: Channels a task may DECLARE it rides.
 MODALITIES = ("text", "image", "audio", "document")
 
-#: What the shipped runner may claim to EXERCISE. `text_simulation` means the task describes a
-#: non-text channel but is executed as text, which is the honest label for all six of Assay's
-#: so-called multimodal tasks today: no pixel, audio or document decoding path exists here.
-IMPLEMENTED_MODALITIES = ("text", "text_simulation")
+#: What the shipped runner may claim to EXERCISE. `text_simulation` means a task describes a
+#: non-text channel but is executed as text; it remains a legal value so the label stays
+#: available for any future task whose path is not built yet. The six image tasks no longer
+#: use it: they plant the canary in real PNG bytes (`assay_bench/media.py`).
+IMPLEMENTED_MODALITIES = ("text", "text_simulation", "image")
 
 _PKG = Path(__file__).resolve().parent
 #: src/  (the package's parent) and the repository root above it. A source checkout keeps the
@@ -230,13 +231,21 @@ def validate_catalog_document(doc: Any) -> dict[str, Any]:
                 raise ValidationError(
                     f"{where} ({tid}): implemented_modality "
                     f"{execution['implemented_modality']!r} not in {IMPLEMENTED_MODALITIES}")
-            # A task cannot claim to implement a richer modality than it declares.
-            if (execution["implemented_modality"] == "text"
-                    and execution["declared_modality"] != "text"):
+            # A task may not claim to implement a richer modality than it declares, nor quietly
+            # downgrade a declared non-text channel to plain text.
+            declared, implemented = execution["declared_modality"], execution["implemented_modality"]
+            if implemented == "text" and declared != "text":
                 raise ValidationError(
-                    f"{where} ({tid}): declares modality "
-                    f"{execution['declared_modality']!r} but claims a plain text "
+                    f"{where} ({tid}): declares modality {declared!r} but claims a plain text "
                     f"implementation; use 'text_simulation' and say so")
+            if implemented not in ("text", "text_simulation") and implemented != declared:
+                raise ValidationError(
+                    f"{where} ({tid}): implements {implemented!r} but declares {declared!r}; a "
+                    f"task cannot implement a channel it does not describe")
+            if implemented == "image" and "image_plant" not in execution:
+                raise ValidationError(
+                    f"{where} ({tid}): claims a real image implementation but names no "
+                    f"image_plant; say how the canary reaches the pixels")
             caps = execution["requires_capabilities"]
             if not isinstance(caps, list) or not caps:
                 raise ValidationError(f"{where} ({tid}): requires_capabilities must be a "

@@ -461,10 +461,15 @@ class DocumentedNumbersMatchReality(unittest.TestCase):
 
     def test_the_stated_multimodal_count_is_the_real_one(self):
         catalog = json.loads((ROOT / "tasks.json").read_text())
+        image = [t["id"] for t in catalog["tasks"]
+                 if (t.get("execution") or {}).get("implemented_modality") == "image"]
         simulated = [t["id"] for t in catalog["tasks"]
                      if (t.get("execution") or {}).get("implemented_modality") == "text_simulation"]
-        self.assertEqual(len(simulated), 6)
+        self.assertEqual(len(image), 6)
+        self.assertEqual(simulated, [], "a text simulation is still labelled as one somewhere")
         for name in ("README.md", "SPEC.md", "COVERAGE.md"):
             text = (ROOT / name).read_text(encoding="utf-8")
             with self.subTest(doc=name):
-                self.assertIn("Six" if name != "COVERAGE.md" else "Six", text)
+                self.assertIn("Six", text)
+                for tid in image:
+                    self.assertIn(tid, text, f"{name} omits image task {tid}")

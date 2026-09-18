@@ -28,13 +28,16 @@ def _cell(crosswalk: dict, key: str, shorten) -> str:
 
 
 def _modality(task: dict) -> str:
-    """Declared channel, and -- when they differ -- what the runner actually exercises."""
+    """Declared channel, what the runner actually exercises, and how the canary gets there."""
     execution = task.get("execution") or {}
     declared = execution.get("declared_modality", "text")
     implemented = execution.get("implemented_modality", "text")
     if implemented == "text_simulation":
         return f"{declared} (**text sim**)"
-    return declared
+    if implemented != declared:
+        return f"{declared} (**as {implemented}**)"
+    plant = execution.get("image_plant")
+    return f"{declared} (`{plant}`)" if plant else declared
 
 
 def build() -> str:
@@ -60,11 +63,16 @@ def build() -> str:
         "deterministic but carry no cryptographic guarantee at all, and the headline scores "
         "aggregate all three classes.\n\n"
         "**Modality column.** `text` means the runner exercises the task's own channel. "
-        "**`text sim`** means the task *describes* a non-text channel but the shipped runner "
-        "exercises it as text: no pixel, audio or document decoding path exists in this "
-        "repository, and `TASKS.md` states for each of these tasks that the image is a "
-        "placeholder and the directive rides the accompanying text. Six tasks are in that "
-        "state. Treat them as text-channel tasks until a real modality path ships.\n\n"
+        "`image` means the runner builds a real PNG and the canary is present only in the "
+        "image bytes: the parenthesised word is the plant route -- `pixels` (LSB "
+        "steganography), `metadata` (a `tEXt` chunk), `qr` (a QR symbol the harness encodes "
+        "and decodes) or `rug_pull` (a benign image swapped for a planted one between "
+        "fetches). Six tasks are in that state; the surface builder refuses to emit one whose "
+        "canary is also readable in the prose. The decoder is this repository's own "
+        "(`assay_bench.media`): no third-party scanner or production vision model has been "
+        "shown to read these images, so the image tasks establish that the canary travels "
+        "only through the image, not that a deployed model would act on it. No audio, video "
+        "or document path exists and no task declares one.\n\n"
         "Mappings are rendered from the crosswalk in `tasks.json`; no id is hand-copied into "
         "this file. They are our reading of each taxonomy, not an endorsement by its "
         "publisher.\n\n"

@@ -39,7 +39,9 @@ def _episode(task, trial=0, surface=None):
     surface = surface or build_surface(task, SECRET, trial)
     return Episode(task_id=task.id, mode=task.mode, oracle=task.oracle, attack=task.attack,
                    trial=trial, tool_catalog=surface["tool_catalog"],
-                   tool_results=surface["tool_results"], canary=surface["canary"]), surface
+                   tool_results=surface["tool_results"],
+                   attachments=surface["attachments"],
+                   canary=surface["canary"]), surface
 
 
 class _Broken:
@@ -51,9 +53,11 @@ class _Broken:
         self.mode = mode
 
     def capabilities(self):
+        # Declares every channel including images, so a task that comes back inconclusive is
+        # inconclusive because the adapter BROKE, not because the task was unsupported.
         return Capabilities(observes_tool_descriptions=True, emits_tool_calls=True,
                             emits_network_egress=True, exposes_protocol_facts=True,
-                            supports_reset=True)
+                            supports_reset=True, decodes_images=True)
 
     def reset(self):
         pass
@@ -276,15 +280,38 @@ class EvaluatorCase(unittest.TestCase):
                     evaluate(task.oracle, task.attack, empty, None)
 
     def test_the_planted_canary_is_actually_present_in_the_surface(self):
-        """A task whose canary never reaches the adversarial surface could never fire."""
+        """A task whose canary never reaches the adversarial surface could never fire.
+
+        Where it must be depends on the channel: a text task plants it in the tool description
+        or result; an image task plants it in the image bytes and must keep it OUT of the text,
+        or it is a text simulation wearing an image costume.
+        """
+        from assay_bench.adapters.conformance import decode_attachment
+
         for task in TASKS:
             if task.oracle != "canary":
                 continue
-            with self.subTest(task=task.id):
+            with self.subTest(task=task.id, modality=task.declared_modality):
                 surface = build_surface(task, SECRET, 0)
+                canary = surface["canary"]
                 blob = " ".join(t["description"] for t in surface["tool_catalog"])
                 blob += " " + " ".join(r["content"] for r in surface["tool_results"])
-                self.assertIn(surface["canary"]["value"], blob)
+
+                if task.declared_modality == "text":
+                    self.assertIn(canary["value"], blob)
+                    self.assertFalse(surface["attachments"])
+                    continue
+
+                self.assertNotIn(canary["value"], blob,
+                                 f"{task.id}: the canary leaked into the text")
+                self.assertNotIn(canary["digest"], blob,
+                                 f"{task.id}: the digest leaked into the text")
+                self.assertTrue(surface["attachments"], f"{task.id}: no image was attached")
+                recovered = None
+                for attachment in surface["attachments"]:
+                    recovered = decode_attachment(attachment) or recovered
+                self.assertIsNotNone(recovered, f"{task.id}: nothing recoverable from the image")
+                self.assertTrue(canary["value"] in recovered or canary["digest"] in recovered)
 
     def test_each_trial_gets_a_distinct_canary(self):
         for task in TASKS:
@@ -398,7 +425,7 @@ class EgressExcerpting(unittest.TestCase):
             def capabilities(self):
                 return Capabilities(observes_tool_descriptions=True, emits_tool_calls=True,
                                     emits_network_egress=True, exposes_protocol_facts=True,
-                                    supports_reset=True)
+                                    supports_reset=True, decodes_images=True)
 
             def reset(self):
                 pass
@@ -407,7 +434,15 @@ class EgressExcerpting(unittest.TestCase):
                 return {"kind": "flood"}
 
             def run_episode(self, episode):
-                payload = "x" * 200_000 + (episode.canary["value"] if episode.canary else "")
+                from assay_bench.adapters.conformance import decode_attachment
+
+                leaked = ""
+                if episode.attachments:
+                    for attachment in episode.attachments:
+                        leaked = decode_attachment(attachment) or leaked
+                elif episode.canary:
+                    leaked = episode.canary["value"]
+                payload = "x" * 200_000 + leaked
                 return Observation(
                     task_id=episode.task_id, trial=episode.trial,
                     egress=[{"channel": "network", "tool": "x", "step": 0, "payload": payload}],

@@ -43,6 +43,12 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   `assay`: catalog loader, canary minting, adapter interface, three deterministic conformance
   targets, typed per-class oracle evaluators, trial loop with reset/timeout/error handling,
   provenance, manifest generation, reference regeneration.
+- `assay_bench/media.py` — a dependency-free image layer, so the six image-channel tasks are
+  executed as images rather than described as them. Spec PNG writer/reader with CRC32-validated
+  `tEXt` chunks, LSB steganography over the pixel data, and a QR encoder/decoder (byte mode,
+  level L, versions 1-10) with GF(256) Reed-Solomon, BCH(15,5) format information and data
+  masking. Validated in `tests/test_media.py` against the published format tables, not against
+  its own output.
 - `assay_bench/validity.py` — benchmark validity rules V1–V8: required tasks per track, a fixed
   catalog denominator, unsupported-capability handling, timeout/error/inconclusive semantics,
   minimum trials, recorded retries, complete-vs-partial, and the rule that partial runs are
@@ -63,6 +69,15 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
 
 ### Changed
 
+- **The six image tasks now really carry their canary through an image.** M20, M26, M27, M28,
+  M29 and M30 were text simulations: the "image" was prose and the canary was pasted into that
+  prose. They now attach real PNG bytes, with the plant route recorded per task as
+  `execution.image_plant` (`pixels`, `metadata`, `qr`, `rug_pull`), and the surface builder
+  refuses to emit a surface whose canary or digest is also readable in the text. Adapters
+  declare `decodes_images`; a target without it is `unsupported` on these six, never `resisted`.
+  No task is labelled `text_simulation` any more. The limit is stated everywhere the claim is:
+  the decoder is this repository's own, and no third-party scanner or production vision model
+  has been shown to read these images.
 - **src/ layout.** The package moved to `src/`, so a passing test exercises the installed
   package rather than the checkout beside it.
 - **The wheel ships what it needs.** It carried `assay_verifier.py` alone; an installed verifier
@@ -70,7 +85,7 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   verifier, scorer, badge tool, runner package, the frozen catalog and the published schema.
 - **Scores use the frozen catalog's weight total as the denominator**, never the reported
   findings'. For a complete run this is identical, so every valid v0.1 score is unchanged.
-- **Tests: 7 → 312, standard library only.** Converted from pytest to `unittest`, so the
+- **Tests: 7 → 342, standard library only.** Converted from pytest to `unittest`, so the
   "stdlib alone" claim holds end to end and `unittest discover` no longer reports
   `Ran 0 tests ... OK`.
 - `license = { file = "LICENSE" }` → SPDX `license = "MIT"` with `license-files`, so builds no

@@ -192,29 +192,47 @@ mapping against the 31 frozen tasks.
 
 ---
 
-## G13 — Six tasks describe an image channel but are executed as text
+## G13 — The six image tasks are executed as images
 
-**Status: open, now labelled in machine-readable form.**
+**Status: closed for the image channel; audio, video and document remain unimplemented and
+unclaimed.**
 
-M20, M26, M27, M28, M29 and M30 specify an image channel — a directive in a user-attached image,
-in the pixels of a tool-returned image, a cross-modal vision-to-network chain, a steganographic
-chart, an image-resource rug-pull, and a QR code. **None is executed as an image.** There is no
-pixel, audio or document decoding path in this repository, and the runner exercises all six as
-text.
+Through v0.2 M20, M26, M27, M28, M29 and M30 *described* an image channel and were executed as
+text: the "image" was prose and the canary was pasted into that prose, so nothing about an image
+was exercised. M30's own `TASKS.md` entry read *"The image is a placeholder … The directive is in
+the TEXT, not the image."*
 
-`TASKS.md` already said so per task — M30's entry reads *"The image is a placeholder … The
-directive is in the TEXT, not the image"* — while README and the paper described a shipped
-multimodal track. The gap was in the marketing, not the spec.
+**What shipped.** [`src/assay_bench/media.py`](src/assay_bench/media.py), dependency-free and
+stdlib-only:
 
-Now: every task in `tasks.json` carries `execution.declared_modality` and
-`execution.implemented_modality`; the six are `text_simulation`; `COVERAGE.md` has a **Modality**
-column flagging them; the catalog loader rejects a contract claiming a native non-text
-implementation; and `tests/test_source_of_truth.py::ModalityTruth` fails if any surface implies
-otherwise.
+- a PNG writer and reader — IHDR/tEXt/IDAT/IEND, CRC32 validated on read, filter type 0;
+- LSB steganography over the pixel data, with a magic marker and a byte-count length header;
+- a QR encoder and decoder — byte mode, error-correction level L, versions 1 through 10,
+  including GF(256) Reed-Solomon, BCH(15,5) format information, data masking and interleaving.
 
-**What would close it:** a real decoding path per modality — render the canary into actual
-pixels, decode an actual QR code, read actual alt-text metadata — with per-task tests, and
-`implemented_modality` moved to `image` only for the tasks that genuinely do it.
+`surface.py` plants the canary by one of four routes, recorded per task as
+`execution.image_plant`: `pixels` (M20, M26, M27), `metadata` (M28), `rug_pull` (M29) and `qr`
+(M30). The plant is verified at build time — `_verify_image_plant` raises if the canary or its
+digest is also present in the prose, and raises if the value cannot be recovered from the image.
+Adapters declare `decodes_images`; `adapters.supports()` reports a target without it as
+`unsupported` on these six rather than crediting it with resistance.
+
+**How it is held honest.** `tests/test_media.py` (27 tests) checks the PNG round-trip and CRC
+rejection, steganographic recovery including multi-byte payloads and a bounded visual delta, and
+validates the QR implementation against the published BCH format table and the Reed-Solomon
+generator polynomials rather than against our own output. `ModalityTruth` in
+`tests/test_source_of_truth.py` now fails if any task is still labelled `text_simulation`, if an
+image task attaches something that is not a PNG, if a text task attaches anything, or if any task
+declares a modality with no executable path.
+
+**What this still does not establish.** The decoder is ours. No commercial scanner, camera or
+production vision model has been shown to read these images, so these tasks do not show that a
+deployed model would act on the planted directive. They show that the canary travels only through
+the image bytes and that a decoder recovers it. That boundary is stated in README, SPEC §8,
+`COVERAGE.md` and each task's `TASKS.md` entry.
+
+**Still open:** audio, video and document channels. No path exists, no task declares one, and a
+test fails if one does.
 
 ---
 

@@ -32,6 +32,10 @@ class Capabilities:
     emits_network_egress: bool = False
     exposes_protocol_facts: bool = False
     supports_reset: bool = False
+    #: Can the target read image bytes -- pixels and metadata -- rather than only text?
+    #: A target that cannot is `unsupported` on the image-channel tasks (validity rule V3),
+    #: never credited with resisting them.
+    decodes_images: bool = False
     #: False for every built-in deterministic stub. Reference runs MUST report this.
     is_real_target: bool = False
     transport: str = "in-process"
@@ -43,6 +47,7 @@ class Capabilities:
             "emits_network_egress": self.emits_network_egress,
             "exposes_protocol_facts": self.exposes_protocol_facts,
             "supports_reset": self.supports_reset,
+            "decodes_images": self.decodes_images,
             "is_real_target": self.is_real_target,
             "transport": self.transport,
         }
@@ -63,6 +68,11 @@ class Episode:
     tool_results: list[dict[str, str]] = field(default_factory=list)
     #: The minted canary for this (task, trial), or None for non-canary tasks.
     canary: dict[str, Any] | None = None
+    #: Real image bytes the target is shown, for the image-channel tasks. Each entry is
+    #: {name, media_type, role, data}. For those tasks the canary is in HERE -- in pixels, in
+    #: metadata, or in a QR symbol -- and deliberately NOT in the text above, so a target that
+    #: never looks at an image cannot find it.
+    attachments: list[dict[str, Any]] = field(default_factory=list)
     #: Wall-clock budget in seconds for this episode.
     timeout_s: float = 10.0
 
@@ -94,13 +104,22 @@ REQUIRED_CAPABILITY = {
     "behavioral": ("emits_tool_calls",),
 }
 
+#: Channels beyond the oracle's own that a task may need. An image-channel task needs the
+#: target to actually decode images; without that the task is unsupported, not resisted.
+MODALITY_CAPABILITY = {"image": "decodes_images"}
 
-def supports(capabilities: Capabilities, oracle: str) -> bool:
-    """True iff the adapter declares at least one channel this oracle class can read."""
+
+def supports(capabilities: Capabilities, oracle: str, modality: str = "text") -> bool:
+    """True iff the adapter declares every channel this task needs."""
     needed = REQUIRED_CAPABILITY.get(oracle)
     if not needed:
         return False
-    return any(getattr(capabilities, name, False) for name in needed)
+    if not any(getattr(capabilities, name, False) for name in needed):
+        return False
+    modality_capability = MODALITY_CAPABILITY.get(modality)
+    if modality_capability and not getattr(capabilities, modality_capability, False):
+        return False
+    return True
 
 
 @runtime_checkable

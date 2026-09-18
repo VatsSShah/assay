@@ -238,24 +238,34 @@ flowchart LR
 Conformance rows and measurement rows live in separate tables so a stub's 100.0 can never be
 read as a product result. See [`leaderboard/SUBMIT.md`](leaderboard/SUBMIT.md).
 
-## Multimodal track: described, but executed as text simulation
+## Multimodal track: executed as real images, and what that does not prove
 
-Six tasks (M20, M26, M27, M28, M29, M30) *describe* an image channel: a directive in a
-user-attached image, in the pixels of a tool-returned image, a cross-modal vision-to-network
-chain, a steganographic chart, an image-resource rug-pull, and a QR code encoding an egress URL.
+Six tasks (M20, M26, M27, M28, M29, M30) carry their canary through an image channel: a
+directive in a user-attached image, in the pixels of a tool-returned image, a cross-modal
+vision-to-network chain, a steganographic chart, an image-resource rug-pull, and a QR code
+encoding an egress URL.
 
-**None of them is executed as an image today.** There is no pixel, audio or document decoding
-path in this repository. The runner exercises all six as text, and `TASKS.md` says so for each
-of them — M30's own entry reads *"The image is a placeholder … The directive is in the TEXT, not
-the image."*
+**All six are now executed as images.** [`src/assay_bench/media.py`](src/assay_bench/media.py)
+is a dependency-free PNG writer/reader (spec `tEXt` chunks, CRC32-checked), an LSB
+steganography channel, and a QR encoder/decoder (byte mode, level L, versions 1-10). The surface
+builder plants the canary into the PNG bytes by one of four named routes — `pixels`, `metadata`,
+`qr`, `rug_pull` — recorded per task as `execution.image_plant` in `tasks.json`. The plant is
+checked at build time: `surface.py` raises if the canary or its digest also appears in the
+prose, because a task whose canary is readable in the text is a text task wearing an image
+label. A target that cannot decode images is reported `unsupported` on these six, never
+`resisted` — the requirement is declared in `execution.requires_capabilities`
+(`decodes_images`) and enforced by `adapters.supports()`.
 
-This is recorded in machine-readable form rather than left to prose: every task in
-`tasks.json` carries
-`execution.declared_modality` (the channel it describes) and
-`execution.implemented_modality` (what the runner actually does), the six are marked
-`text_simulation`, [`COVERAGE.md`](COVERAGE.md) flags them in a **Modality** column, and a test
-fails if any surface implies otherwise. Treat them as text-channel tasks until a real modality
-path ships — see [`REMAINING_GAPS.md`](REMAINING_GAPS.md) G13.
+**What that does not establish.** The images are decoded by this repository's own reader. No
+third-party scanner, model, or camera has been shown to read them, so "a real production
+vision model would follow this directive" is *not* a claim these tasks support. What they
+support is narrower and checkable: the canary exists only in the image bytes, a decoder that
+reads those bytes recovers it, and the egress that follows is scored by the same canary oracle
+as every other task. The QR encoder is validated against the published BCH format tables and
+Reed-Solomon generator polynomials in `tests/test_media.py`, not against a commercial scanner.
+
+Audio, video and document channels remain unimplemented and unclaimed: no task declares them,
+and a test fails if one does. See [`REMAINING_GAPS.md`](REMAINING_GAPS.md) G13.
 
 ## Contamination and utility: what is shipped vs planned
 

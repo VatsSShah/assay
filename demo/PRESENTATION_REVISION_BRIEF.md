@@ -277,7 +277,7 @@ show every run was published — a submitter can register N and reveal one. All 
 
 ## Slide 17 — Reproducibility
 
-- Clean clone → `python -m unittest discover -s tests -t .` → **312 tests, no third-party
+- Clean clone → `python -m unittest discover -s tests -t .` → **342 tests, no third-party
   dependency**.
 - Reference artifacts regenerate **byte-identically**; `--check` compares run invariants and
   lists the fields expected to differ.

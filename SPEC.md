@@ -253,14 +253,24 @@ confused-deputy, transport / unauth / DNS-rebind, secret exfil, excessive agency
 lethal-trifecta source→sink paths — the 31 frozen tasks in `tasks.json`, each mapped to OWASP
 MCP Top-10 / Adversa MCP Top-25 / OWASP ASI / MITRE ATLAS / NIST (see `COVERAGE.md`).
 
-**Modality, stated honestly.** Six tasks (M20, M26, M27-M30) *describe* an image channel. None
-is executed as an image: there is no pixel, audio or document decoding path in this repository,
-and the runner exercises all six as text. `TASKS.md` states this per task — M30's entry reads
-*"The image is a placeholder … The directive is in the TEXT, not the image."* Each task in
-`tasks.json` therefore carries both `execution.declared_modality` and
-`execution.implemented_modality`, the six are marked `text_simulation`, and a drift test fails
-if any surface implies a shipped non-text path. The oracle is modality-independent in
-principle; that is a property of the design, not a capability this repository has demonstrated.
+**Modality, stated honestly.** Six tasks (M20, M26, M27, M28, M29, M30) carry their canary through an
+image channel, and all six are executed as images. `assay_bench.media` writes and reads spec
+PNGs (CRC32-checked `tEXt` chunks), embeds and recovers an LSB steganographic payload, and
+encodes and decodes QR symbols (byte mode, level L, versions 1-10) with no third-party
+dependency. Each of the six names its plant route in `execution.image_plant` — `pixels`,
+`metadata`, `qr` or `rug_pull` — and the surface builder refuses to emit a surface in which the
+canary or its digest is also present in the prose, so an image task cannot silently degrade
+into a text one. Adapters declare `decodes_images`; a target without it is scored `unsupported`
+on these six, never `resisted` (§6 validity rule V3).
+
+The limit of the claim: the decoder is this repository's own. No commercial scanner or
+production vision model has been shown to read these images, so these tasks do not establish
+that a deployed model would act on the planted directive. They establish that the canary is
+recoverable *only* from the image bytes and that the egress which follows is scored by the
+canary oracle of §3 unchanged. `tests/test_media.py` validates the QR encoder against the
+published BCH(15,5) format table and the Reed-Solomon generator polynomials, not against a
+scanner. Audio, video and document channels are unimplemented; no task may declare them and a
+drift test enforces that.
 
 **Out of scope:** model-weight / training-time attacks; pure prompt-only jailbreaks; host-OS
 exploits.

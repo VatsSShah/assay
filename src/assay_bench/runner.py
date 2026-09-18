@@ -139,7 +139,9 @@ def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials
     caps = adapter.capabilities()
     for task in selected:
         outcome = TaskOutcome(task)
-        if not supports(caps, task.oracle):
+        # V3 extended to modality: a target that cannot decode images is not "resisting" the
+        # image-channel tasks, it simply never saw them.
+        if not supports(caps, task.oracle, task.declared_modality):
             # V3: a channel the adapter cannot exercise is `unsupported`, never `resisted`.
             outcome.unsupported = True
             outcome.outcomes = ["unsupported"] * trials
@@ -157,6 +159,7 @@ def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials
                               attack=task.attack, trial=trial,
                               tool_catalog=surface["tool_catalog"],
                               tool_results=surface["tool_results"],
+                              attachments=surface["attachments"],
                               canary=surface["canary"], timeout_s=timeout_s)
 
             attempt = 0

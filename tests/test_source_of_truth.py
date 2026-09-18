@@ -15,7 +15,7 @@ import re
 import unittest
 
 from .helpers import ROOT, require_source_checkout
-from assay_bench.adapters import REQUIRED_CAPABILITY
+from assay_bench.adapters import MODALITY_CAPABILITY, REQUIRED_CAPABILITY
 from assay_bench.catalog import load_catalog
 from assay_bench.errors import MalformedInput, ValidationError
 from assay_bench.catalog import validate_catalog_document
@@ -52,11 +52,34 @@ class ExecutionContracts(unittest.TestCase):
                     self.assertIn(key, task.execution)
 
     def test_required_capabilities_match_the_oracle_registry(self):
-        """The contract in the data must agree with what the code demands at run time."""
+        """The contract in the data must agree with what the code demands at run time.
+
+        A task needs its oracle's channels plus, for a non-text channel, the capability that
+        decodes it. Both halves are listed in the data so a reader can see why an adapter that
+        cannot read pixels is reported `unsupported` on M20 rather than credited with resisting.
+        """
         for task in CATALOG:
+            expected = set(REQUIRED_CAPABILITY[task.oracle])
+            modality_capability = MODALITY_CAPABILITY.get(task.declared_modality)
+            if modality_capability:
+                expected.add(modality_capability)
             with self.subTest(task=task.id, oracle=task.oracle):
-                self.assertEqual(tuple(task.execution["requires_capabilities"]),
-                                 REQUIRED_CAPABILITY[task.oracle])
+                self.assertEqual(set(task.execution["requires_capabilities"]), expected)
+
+    def test_a_task_that_needs_a_decoder_says_so_and_the_runtime_agrees(self):
+        """The declared requirement and `supports()` must not drift apart."""
+        from assay_bench.adapters import Capabilities, supports
+
+        oracle_only = Capabilities(emits_network_egress=True, emits_tool_calls=True,
+                                   exposes_protocol_facts=True)
+        with_decoder = Capabilities(emits_network_egress=True, emits_tool_calls=True,
+                                    exposes_protocol_facts=True, decodes_images=True)
+        for task in CATALOG:
+            needs_decoder = "decodes_images" in task.execution["requires_capabilities"]
+            with self.subTest(task=task.id):
+                self.assertEqual(supports(oracle_only, task.oracle, task.declared_modality),
+                                 not needs_decoder)
+                self.assertTrue(supports(with_decoder, task.oracle, task.declared_modality))
 
     def test_a_contract_claiming_an_unimplemented_modality_is_rejected(self):
         import copy
@@ -195,37 +218,87 @@ class DriftAgainstRuntime(unittest.TestCase):
 
 
 class ModalityTruth(unittest.TestCase):
-    """No claim about a modality may outrun the executable path."""
+    """No claim about a modality may outrun the executable path.
 
-    SIMULATED = {"M20", "M26", "M27", "M28", "M29", "M30"}
+    Through v0.2 the six image tasks were text simulations: the "image" was described in prose
+    and the canary was pasted into that prose, so nothing about an image was ever exercised.
+    They now build real PNG bytes and the canary rides only in the image. These tests hold the
+    new claim to the same standard the old one was held to: the label must match the code, in
+    both directions, and no *other* modality may quietly acquire a label it has not earned.
+    """
 
-    def test_the_six_image_tasks_are_labelled_text_simulations(self):
-        self.assertEqual({t.id for t in CATALOG if t.is_text_simulation}, self.SIMULATED)
+    #: Tasks whose channel is an image and which now really execute as images.
+    IMAGE = {"M20", "M26", "M27", "M28", "M29", "M30"}
 
-    def test_no_task_claims_a_native_non_text_implementation(self):
+    #: Modalities with no executable path at all. A task may not claim these.
+    UNIMPLEMENTED = ("audio", "video", "document")
+
+    def test_no_task_is_still_a_text_simulation(self):
+        self.assertEqual({t.id for t in CATALOG if t.is_text_simulation}, set())
+
+    def test_the_image_tasks_declare_and_implement_the_image_channel(self):
         for task in CATALOG:
             with self.subTest(task=task.id):
-                self.assertIn(task.implemented_modality, ("text", "text_simulation"))
+                if task.id in self.IMAGE:
+                    self.assertEqual(task.declared_modality, "image")
+                    self.assertEqual(task.implemented_modality, "image")
+                    self.assertIn(task.execution.get("image_plant"),
+                                  ("pixels", "metadata", "qr", "rug_pull"))
+                else:
+                    self.assertEqual(task.declared_modality, "text")
+                    self.assertEqual(task.implemented_modality, "text")
 
-    def test_the_documentation_does_not_claim_shipped_multimodal_execution(self):
+    def test_no_task_claims_a_modality_with_no_executable_path(self):
+        for task in CATALOG:
+            with self.subTest(task=task.id):
+                self.assertNotIn(task.declared_modality, self.UNIMPLEMENTED)
+                self.assertNotIn(task.implemented_modality, self.UNIMPLEMENTED)
+
+    def test_the_image_label_is_backed_by_a_surface_that_really_attaches_an_image(self):
+        """The label is only as good as what the surface builder emits."""
+        from assay_bench.surface import build_surface
+
+        for task in CATALOG:
+            surface = build_surface(task, run_secret="00" * 32, trial=0)
+            with self.subTest(task=task.id):
+                if task.id in self.IMAGE:
+                    self.assertTrue(surface["attachments"],
+                                    f"{task.id} claims the image channel but attaches nothing")
+                    for attachment in surface["attachments"]:
+                        self.assertEqual(attachment["media_type"], "image/png")
+                        self.assertTrue(attachment["data"].startswith(b"\x89PNG\r\n\x1a\n"),
+                                        f"{task.id}: attachment is not a PNG")
+                else:
+                    self.assertFalse(surface["attachments"],
+                                     f"{task.id} is a text task but attaches a file")
+
+    def test_the_documentation_does_not_claim_a_modality_the_catalog_does_not_implement(self):
+        implemented = {t.implemented_modality for t in CATALOG}
         for name in ("README.md", "SPEC.md", "COVERAGE.md", "corpus/README.md"):
             if not (ROOT / name).is_file():
                 continue
-            text = (ROOT / name).read_text()
-            with self.subTest(surface=name):
-                for phrase in ("carry the canary through a non-text channel",
-                               "scored by the same oracle (no per-modality judge"):
-                    self.assertNotIn(phrase, text,
-                                     f"{name} implies a shipped non-text execution path")
+            lowered = (ROOT / name).read_text().lower()
+            for modality in self.UNIMPLEMENTED:
+                with self.subTest(surface=name, modality=modality):
+                    if modality in implemented:
+                        continue
+                    # Mentioning a modality is fine; claiming tasks run on it is not.
+                    for phrase in (f"{modality} tasks", f"{modality} channel is implemented",
+                                   f"scored on {modality}"):
+                        self.assertNotIn(phrase, lowered,
+                                         f"{name} claims a shipped {modality} path")
 
-    def test_surfaces_that_mention_multimodal_also_say_it_is_simulated(self):
+    def test_surfaces_that_mention_the_image_track_say_what_is_and_is_not_verified(self):
+        """`image` now means real pixels. It still does not mean a third-party scanner read them."""
         for name in ("README.md", "SPEC.md"):
             text = (ROOT / name).read_text()
-            if "multimodal" in text.lower():
-                with self.subTest(surface=name):
-                    self.assertTrue(
-                        "text simulation" in text.lower() or "simulated" in text.lower(),
-                        f"{name} mentions the multimodal track without saying it is simulated")
+            if "multimodal" not in text.lower() and "image" not in text.lower():
+                continue
+            with self.subTest(surface=name):
+                self.assertTrue("assay_bench.media" in text
+                                or "assay_bench/media.py" in text,
+                                f"{name} describes the image track without naming the module "
+                                f"that builds and reads the images")
 
 
 if __name__ == "__main__":

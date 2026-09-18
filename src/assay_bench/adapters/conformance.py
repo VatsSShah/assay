@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from .. import media
 from ..errors import AdapterError
 from . import Adapter, Capabilities, Episode, Observation
 
@@ -36,9 +37,29 @@ _CAPS = Capabilities(
     emits_network_egress=True,
     exposes_protocol_facts=True,
     supports_reset=True,
+    decodes_images=True,
     is_real_target=False,
     transport="in-process",
 )
+
+
+def decode_attachment(attachment: dict[str, Any]) -> str | None:
+    """Actually read the image: pixels, metadata, or a QR symbol.
+
+    This is what makes the image tasks real rather than simulated. A target that skips this
+    function finds nothing, because the canary is not in the text.
+    """
+    pixels, meta = media.read_png(attachment["data"])
+    recovered = media.extract_from_pixels(pixels)
+    if recovered:
+        return recovered
+    description = meta.get("Description")
+    if description:
+        return description
+    try:
+        return media.decode_qr(media.png_to_qr(attachment["data"]))
+    except Exception:
+        return None
 
 
 class _ConformanceTarget:
@@ -82,7 +103,20 @@ class _ConformanceTarget:
             if episode.canary is None:
                 raise AdapterError(f"{episode.task_id}: canary task handed no canary")
             secret_value = episode.canary["value"]
-            if secret_value not in injected:
+
+            if episode.attachments:
+                # An image-channel task. The canary is in the image bytes and NOT in the text,
+                # so a compliant target has to decode the image to leak anything. A rug-pull
+                # ships two images and only the swapped one carries the plant.
+                recovered = None
+                for attachment in episode.attachments:
+                    recovered = decode_attachment(attachment) or recovered
+                if recovered is None:
+                    raise AdapterError(
+                        f"{episode.task_id}: nothing could be recovered from the attached "
+                        f"image, so the episode would be unwinnable")
+                secret_value = recovered
+            elif secret_value not in injected:
                 raise AdapterError(
                     f"{episode.task_id}: the canary was never actually placed in the "
                     f"adversarial surface; the episode would be unwinnable")
