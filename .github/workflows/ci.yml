@@ -60,6 +60,10 @@ jobs:
             python src/assay_verifier.py verify "$m" --require internally_consistent
           done
 
+      # These steps assert a command FAILS, which is awkward under `bash -e`: writing
+      # `cmd; test $? -eq 1` exits the script on cmd's failure before `test` ever runs. That
+      # bug sat here unnoticed because an earlier step always failed first and the job stopped
+      # before reaching it. Each expected failure is captured explicitly instead.
       - name: Tampering is rejected with a stable non-zero exit
         run: |
           python - <<'PY'
@@ -68,19 +72,28 @@ jobs:
           next(f for f in m["findings"] if "canary" in f)["canary"]["observed"] = "TAMPERED"
           pathlib.Path("/tmp/tampered.json").write_text(json.dumps(m))
           PY
-          python src/assay_verifier.py verify /tmp/tampered.json && { echo "::error::a tampered manifest verified"; exit 1; }
-          python src/assay_verifier.py verify /tmp/tampered.json; test $? -eq 1
+          rc=0; python src/assay_verifier.py verify /tmp/tampered.json || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::a tampered manifest exited $rc; expected 1 (0 would mean it verified)"
+            exit 1
+          fi
 
       - name: Assertions disabled must not weaken any check
         run: |
-          python -O src/assay_verifier.py verify /tmp/tampered.json && { echo "::error::python -O turned a rejection into an acceptance"; exit 1; }
-          true
+          rc=0; python -O src/assay_verifier.py verify /tmp/tampered.json || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::under python -O the tampered manifest exited $rc; expected 1"
+            exit 1
+          fi
 
       - name: A partial run must not reach run_complete
         run: |
           python -m assay_bench run --target vulnerable --trials 5 --task M1 --task M2 --out /tmp/partial.json
-          python src/assay_verifier.py verify /tmp/partial.json --require run_complete && { echo "::error::a partial run reached run_complete"; exit 1; }
-          true
+          rc=0
+          python src/assay_verifier.py verify /tmp/partial.json --require run_complete || rc=$?
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::a partial run reached run_complete"; exit 1
+          fi
 
   # ------------------------------------------------------------------ the benchmark runs
   benchmark:

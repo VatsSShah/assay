@@ -12,12 +12,43 @@
       "behavioral": 4
     }
   },
-  "code_commit": "33afecda90995e3a222b4af41f25b00d8491fb6d",
-  "branch": "claude/vibrant-allen-eem19b",
+  "code_commit": "bb17d696752a9daca764eef807da5476426fc811",
+  "branch": "main",
   "generated_runs": [
     {
+      "artifact": "leaderboard/manifests/precommitted_mcp_insecure.json",
+      "sha256": "35f690204914078d636f8345c71d95860029b9b44bc59911241def0aaed92e58",
+      "target": "assay-reference-insecure",
+      "target_is_real": true,
+      "deterministic_target": false,
+      "adapter": "assay-reference-insecure",
+      "transport": "http",
+      "benchmark_version": "0.1",
+      "manifest_format": "2",
+      "runner_version": "0.2.0",
+      "task_set_digest": "e8a6e47520e38b0e4e03fe5ef408f8f5ff1eaf11549a9dced2c76273877bb81b",
+      "target_fingerprint": "c00b388f3353988e",
+      "trials_per_task": 5,
+      "tasks_reported": 31,
+      "completion": "partial",
+      "errors": 0,
+      "timeouts": 0,
+      "agent_resistance_score": 100.0,
+      "server_posture_score": 0.0,
+      "over_refusal_rate": null,
+      "canary_findings": 0,
+      "canary_confirmed": 0,
+      "levels_verified": [
+        "format_valid",
+        "internally_consistent",
+        "canary_correspondence_verified",
+        "catalog_bound"
+      ],
+      "invariants_digest": "4dadddb9e32cd85e9e5cb4fccb8fb477ebaae3c4db4bc863b77984912cb29c92"
+    },
+    {
       "artifact": "leaderboard/manifests/reference_hardened.json",
-      "sha256": "58cddeed23a63811ec614608974d48ff5863dbe28893cc9a5974801463e266ff",
+      "sha256": "ce7490e6b14bbbc9a8d0e5fc854b6fd9769e70f2e0def9e0c9e28e7585650818",
       "target": "conformance-hardened",
       "target_is_real": false,
       "deterministic_target": true,
@@ -27,7 +58,7 @@
       "manifest_format": "2",
       "runner_version": "0.2.0",
       "task_set_digest": "e8a6e47520e38b0e4e03fe5ef408f8f5ff1eaf11549a9dced2c76273877bb81b",
-      "target_fingerprint": "2b2f409c77433a13",
+      "target_fingerprint": "06dbd1052bce640e",
       "trials_per_task": 25,
       "tasks_reported": 31,
       "completion": "complete",
@@ -35,7 +66,7 @@
       "timeouts": 0,
       "agent_resistance_score": 100.0,
       "server_posture_score": 100.0,
-      "over_refusal_rate": null,
+      "over_refusal_rate": 0.0,
       "canary_findings": 0,
       "canary_confirmed": 0,
       "levels_verified": [
@@ -45,11 +76,11 @@
         "catalog_bound",
         "run_complete"
       ],
-      "invariants_digest": "ef7074e79658a07e130918dde40fd093c0c6d64dc741c650743bbdfa2d8610b0"
+      "invariants_digest": "23f0bca5a532d0af5d03a93e177c5eaf8f7dadb7d7de32701d5b9fa9f0c08630"
     },
     {
       "artifact": "leaderboard/manifests/reference_mixed.json",
-      "sha256": "3de7253b57b76756711945823849e826e8c4d966147d47ac8219c2ca819957c2",
+      "sha256": "895b570b26795efc1c4d298511e27a353df3303b923c8fc09d4bb41ca942fe3f",
       "target": "conformance-mixed",
       "target_is_real": false,
       "deterministic_target": true,
@@ -59,7 +90,7 @@
       "manifest_format": "2",
       "runner_version": "0.2.0",
       "task_set_digest": "e8a6e47520e38b0e4e03fe5ef408f8f5ff1eaf11549a9dced2c76273877bb81b",
-      "target_fingerprint": "f930ca877daa06dd",
+      "target_fingerprint": "26607cff12b2f2ca",
       "trials_per_task": 25,
       "tasks_reported": 31,
       "completion": "complete",
@@ -67,7 +98,7 @@
       "timeouts": 0,
       "agent_resistance_score": 71.7,
       "server_posture_score": 81.0,
-      "over_refusal_rate": null,
+      "over_refusal_rate": 0.0,
       "canary_findings": 7,
       "canary_confirmed": 7,
       "levels_verified": [
@@ -77,11 +108,43 @@
         "catalog_bound",
         "run_complete"
       ],
-      "invariants_digest": "552ea2cabc37c113bd920ee1bd7ad8e434898ebc9e5cb4b19343d8d47cd4d1cf"
+      "invariants_digest": "784b4e78f466e9f2183f679188722c7b67e538e9e4fd786793dc62eeb907b50a"
+    },
+    {
+      "artifact": "leaderboard/manifests/reference_overcautious.json",
+      "sha256": "beac7301a7883a8ecd6de46bb16b5536211a462f6503d0826ab50e666a75b526",
+      "target": "conformance-overcautious",
+      "target_is_real": false,
+      "deterministic_target": true,
+      "adapter": "conformance-overcautious",
+      "transport": "in-process",
+      "benchmark_version": "0.1",
+      "manifest_format": "2",
+      "runner_version": "0.2.0",
+      "task_set_digest": "e8a6e47520e38b0e4e03fe5ef408f8f5ff1eaf11549a9dced2c76273877bb81b",
+      "target_fingerprint": "7042a4d3026aa26d",
+      "trials_per_task": 25,
+      "tasks_reported": 31,
+      "completion": "complete",
+      "errors": 0,
+      "timeouts": 0,
+      "agent_resistance_score": 100.0,
+      "server_posture_score": 100.0,
+      "over_refusal_rate": 100.0,
+      "canary_findings": 0,
+      "canary_confirmed": 0,
+      "levels_verified": [
+        "format_valid",
+        "internally_consistent",
+        "canary_correspondence_verified",
+        "catalog_bound",
+        "run_complete"
+      ],
+      "invariants_digest": "dcb0ec65e4f0f1bd5a0d6dc66dbcfe4b94d16f82c3321b9473dc7202148f8b29"
     },
     {
       "artifact": "leaderboard/manifests/reference_vulnerable.json",
-      "sha256": "28d6756a8b4ef22b6c0050f10f0db502b15a4022def7086374eef74e44b6244e",
+      "sha256": "f76f6c581483de666ec688c7842a82b0fdbaeadfbaec632c705ce02d782591ff",
       "target": "conformance-vulnerable",
       "target_is_real": false,
       "deterministic_target": true,
@@ -91,7 +154,7 @@
       "manifest_format": "2",
       "runner_version": "0.2.0",
       "task_set_digest": "e8a6e47520e38b0e4e03fe5ef408f8f5ff1eaf11549a9dced2c76273877bb81b",
-      "target_fingerprint": "5bb7cc4e898799a0",
+      "target_fingerprint": "4da62e2270869b45",
       "trials_per_task": 25,
       "tasks_reported": 31,
       "completion": "complete",
@@ -99,7 +162,7 @@
       "timeouts": 0,
       "agent_resistance_score": 0.0,
       "server_posture_score": 0.0,
-      "over_refusal_rate": null,
+      "over_refusal_rate": 0.0,
       "canary_findings": 25,
       "canary_confirmed": 25,
       "levels_verified": [
@@ -109,7 +172,7 @@
         "catalog_bound",
         "run_complete"
       ],
-      "invariants_digest": "76fd2f39201330c8997e859ecf503c25835aea4bffaca5ac0eec08d26dda1e04"
+      "invariants_digest": "e16388bfc22c82baef72a336d251e212808c2536f41cf62cc2e7e86ff805ac2f"
     }
   ],
   "legacy_fixtures": [
@@ -142,8 +205,8 @@
   ],
   "artifact_hashes": {
     "reference/conformance_matrix.json": "264b4247fbf588677e917a835ced21af88eeaef58cc8754e667df64b656fced1",
-    "tasks.json": "3f7bd63c5a2940807548624a68a9e3f2ad89069a35296b75231767b898ea4342",
-    "COVERAGE.md": "0470910318cdf308801b4888e7f176301e07eb54b846e5bd8c5f65597c1bd260",
+    "tasks.json": "6749c3028230c04c5c9bbbc9607f3008effa8780d23cd201cc31e88756c70ccd",
+    "COVERAGE.md": "3b290c1799f35150372af54d57544d73e52bd22e71585401b80c50867306388b",
     "leaderboard/index.md": "8a1ae6235d6b3045e6a9732f9557f3bb1d7e84c30a37441c5310ddc01b86ab5e",
     "demo/recording/validation.json": "a780590fb689a7deda7308f9577e6ca0061f6a3ac0c9f1681ef7cbedde884945"
   },
