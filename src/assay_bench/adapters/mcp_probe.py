@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import urllib.parse
 from typing import Any
 
 from ..errors import AdapterError
@@ -166,10 +167,24 @@ class MCPServerProbe:
             "adapter_version": self.version,
             "kind": self.kind,
             "transport": "http" if self.url is not None else "stdio",
-            "endpoint": self.url or " ".join(self.command or []),
+            "endpoint": self._identity_endpoint(),
+            "endpoint_note": (
+                "scheme, host and path only. The TCP port is deliberately excluded: a loopback "
+                "server takes an OS-assigned port, so including it would give the same server a "
+                "different fingerprint on every restart and make the number useless for the "
+                "comparison it exists to support -- including binding a precommitment to a run. "
+                "The full endpoint as reached is recorded in target.note."),
             "third_party": self.third_party,
             "remote": remote,
         }
+
+    def _identity_endpoint(self) -> str:
+        """The endpoint reduced to its stable parts."""
+        if self.url is None:
+            return " ".join(self.command or [])
+        parsed = urllib.parse.urlsplit(self.url)
+        host = parsed.hostname or ""
+        return urllib.parse.urlunsplit((parsed.scheme, host, parsed.path, "", ""))
 
     # -- probes ------------------------------------------------------------------------
 
