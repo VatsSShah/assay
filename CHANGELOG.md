@@ -179,7 +179,7 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   verifier, scorer, badge tool, runner package, the frozen catalog and the published schema.
 - **Scores use the frozen catalog's weight total as the denominator**, never the reported
   findings'. For a complete run this is identical, so every valid v0.1 score is unchanged.
-- **Tests: 7 → 554, standard library only.** Converted from pytest to `unittest`, so the
+- **Tests: 7 → 558, standard library only.** Converted from pytest to `unittest`, so the
   "stdlib alone" claim holds end to end and `unittest discover` no longer reports
   `Ran 0 tests ... OK`.
 - `license = { file = "LICENSE" }` → SPDX `license = "MIT"` with `license-files`, so builds no

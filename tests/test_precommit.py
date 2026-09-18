@@ -416,6 +416,15 @@ class PrecommitCommandLine(unittest.TestCase):
         self.assertTrue(records, "the worked example's registry record is missing")
         if not (root / ".git").exists():                  # an unpacked sdist has no history
             self.skipTest("not a git checkout, so repository ordering cannot be read")
+        shallow = subprocess.run(["git", "rev-parse", "--is-shallow-repository"], cwd=root,
+                                 capture_output=True, text=True)
+        if shallow.stdout.strip() == "true":
+            # In a shallow clone every file looks introduced by the single commit present, so
+            # the commitment and the manifest appear simultaneous. That is an artefact of the
+            # clone depth, not evidence about ordering, and reporting it as a failure would
+            # train people to ignore a real one. CI checks out with fetch-depth: 0.
+            self.skipTest("shallow clone: git history is truncated, so the commit that "
+                          "introduced each file cannot be determined")
         for record_path in records:
             record = json.loads(record_path.read_text())
             manifests = [p for p in (root / "leaderboard" / "manifests").glob("*.json")

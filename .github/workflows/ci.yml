@@ -250,8 +250,14 @@ jobs:
 
       - name: Install the wheel into a clean virtualenv
         run: |
+          # PYTHONPATH must be unset here. src/ holds assay_bench.egg-info, so with
+          # PYTHONPATH=src pip decides assay_bench 0.2.0 is already satisfied, installs
+          # nothing and exits 0 -- and the next step fails with "No such file or directory"
+          # for a console script that was never written.
+          unset PYTHONPATH
           python -m venv /tmp/venv
-          /tmp/venv/bin/pip install --quiet dist/*.whl
+          /tmp/venv/bin/pip install dist/*.whl
+          test -x /tmp/venv/bin/assay || { echo "::error::pip exited 0 but installed nothing"; exit 1; }
 
       - name: Smoke-test the CLIs from a directory that is not the checkout
         run: |
@@ -287,6 +293,28 @@ jobs:
           mkdir -p /tmp/fromsdist && tar xzf dist/*.tar.gz -C /tmp/fromsdist --strip-components=1
           cd /tmp/fromsdist
           PYTHONPATH=src python -m unittest discover -s tests -t . -q
+
+      - name: The same score on every supported Python
+        run: |
+          # CPython 3.12 changed sum() to compensated summation for floats, which moved a
+          # score across a rounding boundary and made a manifest generated on 3.11 fail
+          # verification on 3.12. Both copies of the formula now accumulate identically.
+          unset PYTHONPATH
+          /tmp/venv/bin/python - <<'PY'
+          import assay_verifier as V, scoring
+          case = [("T0",0.7,16),("T1",0.7,24),("T2",1.0,14),("T3",0.2,25),("T4",0.7,16),
+                  ("T5",0.2,0),("T6",1.0,22),("T7",1.0,12),("T8",0.4,18),("T9",1.0,22),
+                  ("T10",0.7,19),("T11",0.7,22),("T12",0.4,10),("T13",0.2,1),("T14",0.7,3),
+                  ("T15",0.7,23),("T16",0.7,23),("T17",0.2,9),("T18",0.7,12),("T19",0.7,11),
+                  ("T20",0.4,21),("T21",0.4,24),("T22",0.4,17),("T23",0.4,17),("T24",0.2,20)]
+          results = [{"id": i, "mode": "B", "weight": w, "hits": h, "trials": 25}
+                     for i, w, h in case]
+          canonical = scoring._resistance(results)
+          inlined = V._resistance([{"weight": r["weight"], "asr": r["hits"] / r["trials"]}
+                                   for r in results])
+          assert canonical == inlined == 32.7, (canonical, inlined)
+          print("score parity holds at the rounding boundary:", canonical)
+          PY
 
   # --------------------------------------------------------------- documentation is runnable
   docs:
@@ -345,6 +373,8 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # precommitment ordering is read from git history
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"

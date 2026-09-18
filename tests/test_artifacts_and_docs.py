@@ -178,6 +178,13 @@ class InstallInstructionsPointAtThisProject(unittest.TestCase):
     RECORDS = {"REMAINING_GAPS.md", "CHANGELOG.md", "BASELINE_AUDIT.md", "ISSUE_1_TRIAGE.md",
                "ISSUE_1_RESPONSE.md", "CLAIM_EVIDENCE_MATRIX.md"}
 
+    #: The release runbook is the one place an install command legitimately appears, because it
+    #: describes the step performed immediately AFTER publishing and exists to make sure that
+    #: step is verified. It is exempt only for `assay-bench`, never for the unrelated `assay`,
+    #: and only while it also carries the rule that the claim must not be made until the install
+    #: works -- which the next test checks.
+    RUNBOOK = "RELEASING.md"
+
     #: `pip install assay` -- the unrelated project. The negative lookahead keeps `assay-bench`
     #: out of this pattern; it has its own test.
     WRONG_PACKAGE = re.compile(r"\b(pip|pipx|uv)\s+(install|run)\s+(-\S+\s+)*assay\b(?!-)")
@@ -209,6 +216,8 @@ class InstallInstructionsPointAtThisProject(unittest.TestCase):
                     self.assertIsNone(self.WRONG_PACKAGE.search(line),
                                       f"{path.name} has a runnable line installing PyPI's "
                                       f"`assay`, an unrelated project by another author")
+                    if path.name == self.RUNBOOK:
+                        continue
                     self.assertIsNone(self.UNPUBLISHED.search(line),
                                       f"{path.name} has a runnable line installing "
                                       f"assay-bench from an index it is not published to")
@@ -222,9 +231,27 @@ class InstallInstructionsPointAtThisProject(unittest.TestCase):
                 with self.subTest(doc=path.name, line=line.strip()[:70]):
                     self.assertIsNone(self.WRONG_PACKAGE.search(line),
                                       f"{path.name} points a reader at PyPI's `assay`")
+                    if path.name == self.RUNBOOK:
+                        continue
                     self.assertIsNone(self.UNPUBLISHED.search(line),
                                       f"{path.name} presents assay-bench as installable from "
                                       f"an index it is not published to")
+
+    def test_the_runbooks_exemption_is_earned(self):
+        """The runbook may show the install only because it exists to verify it.
+
+        An exemption granted on a filename alone would let the runbook quietly become a place
+        that tells people the package is available. It has to keep saying the opposite.
+        """
+        path = ROOT / self.RUNBOOK
+        if not path.is_file():
+            self.skipTest(f"{self.RUNBOOK} is not present")
+        text = path.read_text(encoding="utf-8")
+        self.assertIn("NEEDS CREDENTIALS", text,
+                      "the runbook must mark the publish step as not-yet-performed")
+        self.assertIn("Do not update any document to say the package is installable from PyPI",
+                      text)
+        self.assertIn("404", text, "the runbook must record the checked index status")
 
     def test_the_record_documents_state_why_they_are_allowed_to_mention_it(self):
         """An exemption nobody can see is indistinguishable from an oversight."""

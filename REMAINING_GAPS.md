@@ -530,7 +530,7 @@ explicit list of what is *not* a vulnerability because it is a documented limit,
 
 **Rehearsed and passing**, from a clean clone of the pushed `main`:
 
-- 554 tests, 0 failures;
+- 558 tests, 0 failures;
 - `python -m build` produces both artifacts, `twine check --strict` **PASSES** on each;
 - the wheel installs into a clean venv and runs from outside the checkout, including a Mode-A
   run against a real MCP server;

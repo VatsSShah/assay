@@ -31,7 +31,7 @@ The core suite deliberately installs nothing. Building a wheel needs `setuptools
 |---|---|---|
 | 1 | Baseline and issue triage exist with evidence for every assertion in Issue #1 | **pass** — `audit/BASELINE_AUDIT.md`, `audit/ISSUE_1_TRIAGE.md` (20 assertions, one row each) |
 | 2 | Every open issue classified against current code | **pass** — one open issue (#1); 16 `reproducible_open`, 2 `partially_fixed`, 1 `not_reproducible`, 1 `blocked_needs_decision` |
-| 3 | All supported tests pass, with the exact count reported | **pass** — **554 run, 0 failures, 0 errors, 3 skipped** |
+| 3 | All supported tests pass, with the exact count reported | **pass** — **558 run, 0 failures, 0 errors, 3 skipped** |
 | 4 | Wheel builds, installs in a clean venv, CLIs run from outside the checkout | **pass** — 18 packaging tests; `twine check --strict` PASSED on wheel and sdist; both console scripts driven from a temp directory with `PYTHONPATH` stripped, including a Mode-A run against a real MCP server. A bug found by this gate: `packages` was a hand-kept list and the wheel silently omitted `assay_bench.mcp` and `assay_bench.servers`. Fixed; wheel contents are now derived from the source tree by test |
 | 5 | Every shipped canonical manifest verifies | **pass** — 5 shipped manifests verify (4 conformance references reach all five levels; the precommitted real-server run verifies and correctly withholds `run_complete`); 2 v0.1 fixtures still verify |
 | 6 | Safe/vulnerable conformance runs generate artifacts through documented commands | **pass** — `assay reference` regenerates byte-identically; `--check` compares invariants |
@@ -54,7 +54,7 @@ The core suite deliberately installs nothing. Building a wheel needs `setuptools
 
 ```
 $ python -m unittest discover -s tests -t .
-Ran 554 tests in 17.1s
+Ran 558 tests in 17.1s
 OK (skipped=3)
 ```
 

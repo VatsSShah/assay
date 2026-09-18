@@ -37,6 +37,17 @@ def _can_build() -> tuple[bool, str]:
     return True, ""
 
 
+#: An environment with PYTHONPATH and ASSAY_TASKS removed.
+#:
+#: This is not hygiene, it is correctness. `src/` contains `assay_bench.egg-info`, so with
+#: `PYTHONPATH=src` pip sees assay_bench 0.2.0 already on the path, reports "requirement already
+#: satisfied", installs NOTHING and exits 0. Every test here then failed with
+#: ModuleNotFoundError against a venv that looked successfully populated. CI sets PYTHONPATH=src
+#: globally, which is why this only ever broke there.
+def _clean_env() -> dict:
+    return {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "ASSAY_TASKS")}
+
+
 class Packaging(unittest.TestCase):
     wheel_path: Path | None = None
     venv: Path | None = None
@@ -54,7 +65,8 @@ class Packaging(unittest.TestCase):
         # setuptools that ensurepip bundles, so this needs no network either way.
         cls.venv = cls.tmp / "venv"
         venv = subprocess.run([sys.executable, "-m", "venv", str(cls.venv)],
-                              capture_output=True, text=True, timeout=BUILD_TIMEOUT)
+                              capture_output=True, text=True, timeout=BUILD_TIMEOUT,
+                              env=_clean_env())
         if venv.returncode != 0:  # pragma: no cover
             raise unittest.SkipTest(f"venv creation failed: {venv.stderr}")
         python = cls.venv / "bin" / "python"
@@ -65,7 +77,8 @@ class Packaging(unittest.TestCase):
             [str(python), "-c",
              "import sys, setuptools.build_meta as b; print(b.build_wheel(sys.argv[1]))",
              str(out)],
-            cwd=ROOT, capture_output=True, text=True, timeout=BUILD_TIMEOUT)
+            cwd=ROOT, capture_output=True, text=True, timeout=BUILD_TIMEOUT,
+            env=_clean_env())
         if build.returncode != 0:  # pragma: no cover - environment dependent
             raise unittest.SkipTest(f"wheel build failed:\n{build.stdout}\n{build.stderr}")
         wheels = sorted(out.glob("*.whl"))
@@ -78,15 +91,22 @@ class Packaging(unittest.TestCase):
             [str(python), "-c",
              "import sys, setuptools.build_meta as b; print(b.build_sdist(sys.argv[1]))",
              str(out)],
-            cwd=ROOT, capture_output=True, text=True, timeout=BUILD_TIMEOUT)
+            cwd=ROOT, capture_output=True, text=True, timeout=BUILD_TIMEOUT,
+            env=_clean_env())
         cls.sdist_path = next(iter(sorted(out.glob("*.tar.gz"))), None) if sdist.returncode == 0 else None
 
         pip = cls.venv / "bin" / "pip"
         install = subprocess.run(
             [str(pip), "install", "--no-index", "--no-build-isolation", str(cls.wheel_path)],
-            capture_output=True, text=True, timeout=BUILD_TIMEOUT)
+            capture_output=True, text=True, timeout=BUILD_TIMEOUT, env=_clean_env())
         if install.returncode != 0:  # pragma: no cover
             raise unittest.SkipTest(f"wheel install failed:\n{install.stdout}\n{install.stderr}")
+        # An install that exits 0 having done nothing is the failure mode this suite exists to
+        # catch, so check the artefact rather than the exit code.
+        if not (cls.venv / "bin" / "assay").exists():  # pragma: no cover
+            raise AssertionError(
+                f"pip exited 0 but installed no console script. Output:\n{install.stdout}\n"
+                f"{install.stderr}")
 
     @classmethod
     def tearDownClass(cls):
@@ -98,7 +118,7 @@ class Packaging(unittest.TestCase):
         """Run an installed console script from a directory that is NOT the checkout."""
         elsewhere = self.tmp / "elsewhere"
         elsewhere.mkdir(exist_ok=True)
-        env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "ASSAY_TASKS")}
+        env = _clean_env()
         return subprocess.run([str(self.venv / "bin" / binary), *args],
                               cwd=elsewhere, capture_output=True, text=True, env=env,
                               timeout=BUILD_TIMEOUT)
@@ -106,7 +126,7 @@ class Packaging(unittest.TestCase):
     def _python(self, code):
         elsewhere = self.tmp / "elsewhere"
         elsewhere.mkdir(exist_ok=True)
-        env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "ASSAY_TASKS")}
+        env = _clean_env()
         return subprocess.run([str(self.venv / "bin" / "python"), "-c", code],
                               cwd=elsewhere, capture_output=True, text=True, env=env,
                               timeout=BUILD_TIMEOUT)

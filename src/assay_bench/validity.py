@@ -104,7 +104,11 @@ def required_task_ids(catalog, track: str, scope_kind: str = "full") -> set[str]
 
 def denominator(catalog, mode: str) -> float:
     """V2. The fixed denominator for a mode: every catalog task's weight, reported or not."""
-    total = sum(t.weight for t in catalog.for_mode(mode))
+    import scoring
+
+    # Not sum(): see scoring._total. A compensated sum here and a += loop in the numerator
+    # would put the two sides of the same score on different arithmetic.
+    total = scoring._total(t.weight for t in catalog.for_mode(mode))
     if total <= 0:
         raise ValidationError(f"mode {mode!r} has no positive weight in the catalog")
     return total

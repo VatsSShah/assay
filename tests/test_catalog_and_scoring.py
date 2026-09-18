@@ -8,8 +8,11 @@ import random
 import unittest
 from pathlib import Path
 
-import scoring
+# helpers first: it is what puts src/ on sys.path, so importing `scoring` above it only
+# worked when some other test module happened to be imported first. Running this module on its
+# own then failed with ModuleNotFoundError.
 from .helpers import ROOT, V
+import scoring  # noqa: E402 - must follow the import above
 from assay_bench.catalog import (Catalog, load_catalog, task_set_digest,
                                  validate_catalog_document)
 from assay_bench.errors import MalformedInput, ValidationError
@@ -122,6 +125,68 @@ class ScoringParity(unittest.TestCase):
             inlined = V._resistance([{"weight": r["weight"], "asr": r["hits"] / r["trials"]}
                                      for r in results])
             self.assertEqual(canonical, inlined, results)
+
+    #: The exact input that broke CI. Its weighted sum lands on 32.74999999999997, a hair
+    #: under the .75 rounding boundary, so the last bits of the accumulation decide whether the
+    #: published score is 32.7 or 32.8.
+    ROUNDING_BOUNDARY = [
+        ("T0", 0.7, 16), ("T1", 0.7, 24), ("T2", 1.0, 14), ("T3", 0.2, 25), ("T4", 0.7, 16),
+        ("T5", 0.2, 0), ("T6", 1.0, 22), ("T7", 1.0, 12), ("T8", 0.4, 18), ("T9", 1.0, 22),
+        ("T10", 0.7, 19), ("T11", 0.7, 22), ("T12", 0.4, 10), ("T13", 0.2, 1), ("T14", 0.7, 3),
+        ("T15", 0.7, 23), ("T16", 0.7, 23), ("T17", 0.2, 9), ("T18", 0.7, 12), ("T19", 0.7, 11),
+        ("T20", 0.4, 21), ("T21", 0.4, 24), ("T22", 0.4, 17), ("T23", 0.4, 17), ("T24", 0.2, 20),
+    ]
+
+    def _boundary_results(self):
+        return [{"id": i, "mode": "B", "weight": w, "hits": h, "trials": 25}
+                for i, w, h in self.ROUNDING_BOUNDARY]
+
+    def test_the_two_scorers_agree_on_the_case_that_broke_across_python_versions(self):
+        """CPython 3.12 changed `sum()` to compensated summation for floats.
+
+        The verifier used `sum()` and the canonical scorer used a `+=` loop, so on 3.12 and
+        later they disagreed in the last bits — and at this rounding boundary that is a whole
+        0.1. A manifest generated on 3.11 stating 32.7 was rejected on 3.12 for "stating the
+        wrong score". Both now accumulate the same way, and it is the naive way, because that
+        is what produced every published number.
+        """
+        results = self._boundary_results()
+        canonical = scoring._resistance(results)
+        inlined = V._resistance([{"weight": r["weight"], "asr": r["hits"] / r["trials"]}
+                                 for r in results])
+        self.assertEqual(canonical, inlined)
+        self.assertEqual(canonical, 32.7,
+                         "the published value for this input changed; every score computed "
+                         "before this change is now incomparable")
+
+    def test_compensated_summation_really_would_give_a_different_answer(self):
+        """Without this, the test above could pass for the wrong reason on some version."""
+        import math
+
+        results = self._boundary_results()
+        terms = [r["weight"] * (r["hits"] / r["trials"]) for r in results]
+        weights = [r["weight"] for r in results]
+        naive = round(100 * (1 - scoring._total(terms) / scoring._total(weights)), 1)
+        compensated = round(100 * (1 - math.fsum(terms) / math.fsum(weights)), 1)
+        self.assertEqual(naive, 32.7)
+        self.assertEqual(compensated, 32.8)
+        self.assertNotEqual(naive, compensated,
+                            "this input no longer discriminates between the two summations, "
+                            "so it no longer guards anything; find another boundary case")
+
+    def test_neither_scorer_uses_the_builtin_sum_on_floats(self):
+        """A behavioural test cannot see a `sum()` that happens to agree today."""
+        import inspect
+        import re
+
+        for module, name in ((scoring, "scoring"), (V, "assay_verifier")):
+            source = inspect.getsource(module)
+            body = re.search(r"def _resistance\(.*?\n(?=\n\ndef |\n\nclass )", source,
+                             re.S)
+            self.assertIsNotNone(body, f"{name}._resistance not found")
+            self.assertNotIn("sum(", body.group(0),
+                             f"{name}._resistance uses sum(); on Python 3.12+ that is "
+                             f"compensated summation and will drift from the other copy")
 
     def test_parity_at_varied_trial_counts(self):
         rng = random.Random(7)
