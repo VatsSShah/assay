@@ -4,7 +4,7 @@ Every gate below was executed against a **fresh clone**, not the working tree. C
 codes and counts are as observed. Where a gate cannot pass, it says so and points at the
 corresponding entry in [`REMAINING_GAPS.md`](../REMAINING_GAPS.md) rather than being weakened.
 
-Run against commit `a8afcca`. Reproduce with:
+Run against commit `9871a18`. Reproduce with:
 
 ```bash
 git clone https://github.com/VatsSShah/assay /tmp/assay && cd /tmp/assay
@@ -17,7 +17,7 @@ python -m unittest discover -s tests -t .
 |---|---|
 | Python | 3.11.15 (CPython), Linux x86_64 |
 | Third-party packages installed | **none** for the core suite |
-| Network | not used; PyPI and arxiv.org are unreachable from this container |
+| Network | not used by the core suite. PyPI IS reachable from this container and was queried (see G3); arxiv.org and every paper mirror remain blocked (see G11) |
 | Clone | `git clone --no-hardlinks` of this repository into a temporary directory |
 
 The core suite deliberately installs nothing. Building a wheel needs `setuptools>=77`, which a
@@ -32,17 +32,17 @@ The core suite deliberately installs nothing. Building a wheel needs `setuptools
 | 1 | Baseline and issue triage exist with evidence for every assertion in Issue #1 | **pass** — `audit/BASELINE_AUDIT.md`, `audit/ISSUE_1_TRIAGE.md` (20 assertions, one row each) |
 | 2 | Every open issue classified against current code | **pass** — one open issue (#1); 16 `reproducible_open`, 2 `partially_fixed`, 1 `not_reproducible`, 1 `blocked_needs_decision` |
 | 3 | All supported tests pass, with the exact count reported | **pass** — **503 run, 0 failures, 0 errors, 3 skipped** |
-| 4 | Wheel builds, installs in a clean venv, CLIs run from outside the checkout | **pass** — 15 packaging tests; both console scripts driven from a temp directory with `PYTHONPATH` stripped |
-| 5 | Every shipped canonical manifest verifies | **pass** — 3 generated manifests reach all five levels; 2 v0.1 fixtures still verify |
+| 4 | Wheel builds, installs in a clean venv, CLIs run from outside the checkout | **pass** — 18 packaging tests; `twine check --strict` PASSED on wheel and sdist; both console scripts driven from a temp directory with `PYTHONPATH` stripped, including a Mode-A run against a real MCP server. A bug found by this gate: `packages` was a hand-kept list and the wheel silently omitted `assay_bench.mcp` and `assay_bench.servers`. Fixed; wheel contents are now derived from the source tree by test |
+| 5 | Every shipped canonical manifest verifies | **pass** — 5 shipped manifests verify (4 conformance references reach all five levels; the precommitted real-server run verifies and correctly withholds `run_complete`); 2 v0.1 fixtures still verify |
 | 6 | Safe/vulnerable conformance runs generate artifacts through documented commands | **pass** — `assay reference` regenerates byte-identically; `--check` compares invariants |
 | 7 | Generated artifacts and docs clean under `git diff --exit-code` | **pass** |
 | 8 | Controlled tampering rejected with a stable non-zero exit | **pass** — exit 1, and still exit 1 under `python -O` |
 | 9 | Partial runs cannot masquerade as complete | **pass** — a 2-of-31 run reports an apparent 92.5 and a **lower bound of 0.0**; `--require run_complete` exits 1 |
-| 10 | Precommitment temporally enforced and tested, or claims removed | **pass** — three levels with named authorities, 24 tests over real git repos; "kills cherry-picking" withdrawn and banned by test |
-| 11 | Attestation status distinct from internal verification | **pass** — `attest/`, its own leaderboard column, never emitted by the verifier |
+| 10 | Precommitment temporally enforced and tested, or claims removed | **pass** — three levels with named authorities, 26 tests over real git repos, and now a **worked example in this repository's own history**: `precommit-verify` reaches `repository_ordering_verified` from the clone. "Kills cherry-picking" withdrawn and banned by test |
+| 11 | Attestation status distinct from internal verification | **pass** — `attest/`, its own leaderboard column, never emitted by the verifier. The one shipped record is a `clean_clone_reproduction`, not an attestation, and says so in its own `scope` field; a test forbids any shipped record claiming a maintainer rerun that did not happen |
 | 12 | All executable documentation snippets tested | **pass** — every fenced command extracted and run; 5 excused with stated reasons |
 | 13 | License text consistent or blocked on an owner decision | **pass with a flag** — SPEC's Apache outlier corrected to match `LICENSE`; changing the licence itself needs the owner (G4) |
-| 14 | Literature and novelty claims backed by primary sources | **partial** — four prior benchmarks confirmed from published records; arxiv.org is blocked here so the papers were not read (G11) |
+| 14 | Literature and novelty claims backed by primary sources | **partial** — four prior benchmarks confirmed from published records. Re-checked: arxiv.org, ar5iv, alphaXiv, Semantic Scholar, Papers-with-Code, HuggingFace and OpenReview are all blocked by this container's egress proxy, so the papers were not read. Search summaries carry more detail and were deliberately NOT used to strengthen the claims (G11) |
 | 15 | Claim wording consistent across code, schema, docs, paper, leaderboard, deck brief, demo | **pass** — 5 banned phrases enforced across 13 surfaces |
 | 16 | Demo video genuinely time-varying, inspected, reproducible, accurately labelled | **pass** — see below |
 | 17 | No secrets, credentials or private data committed | **pass** — see below |
@@ -63,19 +63,28 @@ say so. Per module:
 
 | module | tests |
 |---|---|
-| `test_verifier.py` | 50 |
+| `test_verifier.py` | 67 |
+| `test_artifacts_and_docs.py` | 37 |
+| `test_source_of_truth.py` | 32 |
+| `test_twins.py` | 31 |
+| `test_mcp.py` | 30 |
+| `test_diagnostics.py` | 29 |
+| `test_task_matrix.py` | 29 |
 | `test_runner.py` | 28 |
-| `test_catalog_and_scoring.py` | 24 |
-| `test_precommit.py` | 24 |
-| `test_task_matrix.py` | 24 |
-| `test_artifacts_and_docs.py` | 22 |
-| `test_source_of_truth.py` | 22 |
+| `test_media.py` | 27 |
+| `test_catalog_and_scoring.py` | 26 |
+| `test_precommit.py` | 26 |
+| `test_mcp_probe.py` | 24 |
+| `test_contamination.py` | 23 |
+| `test_provenance_and_attest.py` | 22 |
 | `test_demo.py` | 18 |
+| `test_packaging.py` | 18 |
 | `test_canary.py` | 16 |
-| `test_provenance_and_attest.py` | 16 |
-| `test_packaging.py` | 15 |
 | `test_trust_boundary.py` | 9 |
+| `test_mcp_interop.py` | 7 |
 | `test_oracle_blind_spots.py` | 4 |
+
+Total: 503.
 
 `python -m unittest discover` with no arguments still reports `Ran 0 tests ... OK` from the
 repository root, because discovery starts in the current directory. That is a property of
@@ -98,10 +107,22 @@ $ /tmp/cc_venv/bin/python -c "from assay_bench.catalog import load_catalog; ..."
 installed catalog: 31 tasks, digest e8a6e47520e38b0e
 ```
 
-The wheel carries `assay_verifier.py`, `scoring.py`, `badge.py`, the whole `assay_bench` package,
-`data/tasks.json` and `data/manifest_schema.json`. Console scripts `assay` and `assay-bench` both
-resolve. Driven from `/tmp` with `PYTHONPATH` unset: `--help`, `--version`, `levels`, a full
-`run`, `verify --require run_complete`, the legacy bare-path form, and `triple` all behave.
+The wheel carries `assay_verifier.py`, `scoring.py`, `badge.py`, the whole `assay_bench`
+package including `mcp/` and `servers/`, and `data/tasks.json`, `data/manifest_schema.json` and
+`data/twins.json`. `twine check --strict` PASSES on both the wheel and the sdist.
+
+**A bug this gate found.** `packages` in `pyproject.toml` was a hand-kept literal list, so the
+wheel silently omitted `assay_bench.mcp` and `assay_bench.servers`: an installed copy could not
+run against a real MCP server at all while the source checkout could, and nothing failed,
+because the suite runs against `src/` on `PYTHONPATH`. Packages are discovered now, and three
+tests derive the expected wheel contents from the source tree rather than from a list — every
+subpackage, every module, and an end-to-end check that the installed package can stand up a
+reference MCP server and fingerprint it.
+
+Console scripts `assay` and `assay-bench` both resolve. Driven from `/tmp` with `PYTHONPATH`
+unset: `--help`, `--version`, `levels`, a full `run`, `verify --require run_complete`, the
+legacy bare-path form, `triple`, and a Mode-A run against a real MCP server over a loopback
+socket all behave.
 
 The sdist unpacks and **its own suite passes standalone**: 285 tests, 12 skipped as
 checkout-only (git history and the recording are deliberately absent from a distribution).
@@ -200,8 +221,12 @@ it.
 - The only secret the tooling produces is the run secret. A test asserts it never appears in
   provenance, and another that it never appears in a raw-trial log. The committed fixtures use a
   **published, fixed** secret on purpose — they are mechanism validation, not results.
-- `precommit/registry/` is empty, and a test asserts it: a stray record from a CLI smoke test was
-  caught and removed during this audit.
+- `precommit/registry/` holds exactly one record: the worked example, registered in its own
+  earlier commit. Its run secret is **not** committed — the record carries only the SHA-256
+  commitment, and a test checks the secret never appears in it. A stray record from a CLI smoke
+  test was caught and removed during this audit; CLI tests now write to a temporary registry.
+- The canary GUID in `tasks.json` is a deliberate published identifier, not a secret. A test
+  asserts it has not spread beyond the three places it belongs.
 - **The recorded video and its frames are not committed.** This is a public repository and a
   screen recording can capture more than its author intended, so the binaries are delivered out
   of band and regenerated with one command. The *text* evidence — transcript and a validation
@@ -209,6 +234,23 @@ it.
   stays checkable. Distributions exclude them too, and a packaging test asserts it.
 - No credentials, tokens, hostnames, usernames or paths appear in any generated artifact;
   `provenance.environment_summary()` is deliberately coarse.
+
+---
+
+## Gates added in the second pass
+
+| # | Gate | Result |
+|---|---|---|
+| 19 | A real MCP client speaks the protocol to a separate process | **pass** — `assay_bench.mcp`: JSON-RPC 2.0 with a strict decoder, the `initialize` handshake with version negotiation, `tools/list`, `tools/call`, over stdio and Streamable HTTP. 30 tests drive it the way a hostile peer would: malformed frames, mismatched ids, an unknown protocol version, a server that never answers, a server that dies mid-handshake |
+| 20 | That client is verified against software this repository did not write | **pass** — `tests/test_mcp_interop.py` drives a server built with the **official `mcp` SDK**; 6 tests, all passing here. The SDK is never a dependency, and a CI job **fails if the check skips** |
+| 21 | Mode A discriminates between two real server postures | **pass** — the insecure reference server fires M6, M17 and M18; the hardened one fires none. Every fact comes from a status code, a header or a tool result the client received |
+| 22 | A real-target run can never masquerade as a full benchmark result | **pass** — 28 Mode-B tasks need an agent under test, so they are `unsupported` with a stated reason, the run is `partial`, the lower bound is 0.0, `badge.py` refuses it, and the CLI leads with the lower bound instead of the headline |
+| 23 | Absence is never scored as resistance, on any new path | **pass** — an unreachable server, a task the adapter cannot pose, and a client/server disagreement each produce an inconclusive trial. Each is a test |
+| 24 | The image tasks carry their canary in image bytes alone | **pass** — 27 media tests; the surface builder raises if the canary or digest is also readable in the prose, and the QR encoder is validated against the published BCH and Reed-Solomon tables rather than its own output |
+| 25 | The utility axis separates a secure target from a useless one | **pass** — `conformance-hardened` and `conformance-overcautious` are identical on resistance (100/100) and opposite on the twins (0.0 vs 100.0). Both manifests ship, and CI fails if the separation stops holding |
+| 26 | The oracle's blind spots are measured, not merely published | **pass** — 14 of the 15 documented misses are detected and reported. A target leaking every canary split across two requests scores a clean 100.0 and is flagged on all 25 canary tasks. No diagnostic changes any score, asserted by running the same target with them on and off |
+| 27 | Contamination is detectable and partly mitigated | **pass** — a canary GUID whose *miss* is explicitly reported as establishing nothing, and 4 per-run surface phrasings chosen from the run secret. Tests require every phrasing to still fire on the vulnerable target and still not on the hardened control, with the frozen task-set digest unchanged |
+| 28 | Precommitment is exercised, not just implemented | **pass** — `precommit-verify` reaches `repository_ordering_verified` on a real run from the clone. Two defects surfaced by doing it for real: `git log --follow` deciding ordering by rename similarity, and an ephemeral TCP port inside a target fingerprint |
 
 ---
 
@@ -224,6 +266,15 @@ repository. `SPEC.md` §1 says so in place. Tracked as G11.
 **Gate 13 — licence.** The documentation contradiction is removed. Whether the licence itself
 should change is the owner's call. Tracked as G4.
 
-And the one that no gate covers, because it is the largest limitation in the project:
-**there is no real MCP adapter, so nothing here has been scored against a real system.** Every
-number is a property of the harness and its own deterministic stubs. Tracked as G1.
+**Gate 3 — PyPI.** Now checked rather than assumed: `assay-bench` returns 404 from the public
+index, so it is unregistered and nothing claims otherwise. `assay` returns 200 and belongs to an
+unrelated project by another author, so installing the bare name `assay` from PyPI gets you
+someone else's code — tests fail the build if any document starts suggesting it. Publishing is the owner's call. Tracked as
+G3, with G14 for the tag and release.
+
+And the one that no gate covers, because it remains the largest limitation in the project:
+**Mode B has no real target.** 28 of the 31 tasks poison a surface and score what an *agent*
+does with it, and that needs an agent under test — a model with MCP tool access. Mode A is now
+real: three tasks decided against a real MCP server over a socket. The other 28 are not, and a
+run against a real server reports them `unsupported` rather than letting them look answered.
+Tracked as G1.
