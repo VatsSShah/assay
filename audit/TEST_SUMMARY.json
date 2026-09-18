@@ -2,11 +2,11 @@
   "runner": "unittest (standard library); pytest also collects this suite",
   "command": "python -m unittest discover -s tests -t .",
   "tests_run": 312,
-  "failures": 4,
+  "failures": 0,
   "errors": 0,
   "skipped": 3,
   "expected_failures": 0,
-  "passed": false,
+  "passed": true,
   "tests_per_module": {
     "tests.test_artifacts_and_docs": 33,
     "tests.test_canary": 16,
