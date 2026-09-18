@@ -4,8 +4,16 @@ Run from the repository root:
 
     python audit/collect_evidence.py
 
-Writes ``audit/TEST_SUMMARY.json`` and ``audit/RUN_SUMMARY.json``. Everything in them is
-measured by running the thing, never transcribed by hand -- which is the point of having them.
+Writes ``audit/TEST_SUMMARY.json`` and ``audit/RUN_SUMMARY.json``. Everything in them is measured
+by running the thing, never transcribed by hand -- which is the point of having them.
+
+These two files are **not** part of the `git diff --exit-code` gate, for one honest reason:
+``RUN_SUMMARY.json`` records the commit it was generated from, which cannot equal the committed
+value until the next commit lands. CI runs this script and requires it to exit 0 (i.e. the suite
+passes and every manifest verifies); refreshing the files is a release step.
+
+Everything else generated in this repository -- COVERAGE.md, the leaderboard page, the reference
+manifests, the conformance matrix, the packaged catalog -- IS byte-stable and IS gated.
 """
 
 from __future__ import annotations
@@ -15,7 +23,6 @@ import json
 import platform
 import subprocess
 import sys
-import time
 import unittest
 from pathlib import Path
 
@@ -52,11 +59,11 @@ def collect_tests() -> dict:
 
     walk(suite)
 
-    started = time.time()
     runner = unittest.TextTestRunner(stream=open("/dev/null", "w"), verbosity=0)
     result = runner.run(suite)
-    elapsed = time.time() - started
 
+    # Deliberately no duration: it is timing noise, and a file regenerated in CI must be
+    # byte-stable or the `git diff --exit-code` gate becomes a coin toss.
     return {
         "runner": "unittest (standard library); pytest also collects this suite",
         "command": "python -m unittest discover -s tests -t .",
@@ -66,7 +73,6 @@ def collect_tests() -> dict:
         "skipped": len(result.skipped),
         "expected_failures": len(result.expectedFailures),
         "passed": result.wasSuccessful(),
-        "duration_s": round(elapsed, 2),
         "tests_per_module": dict(sorted(per_module.items())),
         "third_party_dependencies": [],
         "environment": {
@@ -148,6 +154,9 @@ def collect_runs() -> dict:
             "oracles": {o: sum(1 for t in catalog if t.oracle == o)
                         for o in ("canary", "protocol", "behavioral")},
         },
+        # The commit these artifacts were generated FROM. It necessarily differs from the
+        # committed value until the next commit lands, so this file is regenerated as part of a
+        # release rather than gated by `git diff --exit-code` on every push.
         "code_commit": _git("rev-parse", "HEAD"),
         "branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
         "generated_runs": runs,

@@ -7,7 +7,6 @@
   "skipped": 3,
   "expected_failures": 0,
   "passed": true,
-  "duration_s": 17.63,
   "tests_per_module": {
     "tests.test_artifacts_and_docs": 22,
     "tests.test_canary": 16,

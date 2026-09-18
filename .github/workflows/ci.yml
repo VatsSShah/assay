@@ -124,16 +124,22 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Regenerate everything
+      # Everything here is byte-stable, so a diff means a committed artifact is out of date.
+      - name: Regenerate every deterministic artifact
         run: |
           python -m assay_bench.sync_data
           python coverage.py
           python leaderboard/build_site.py
           python -m assay_bench reference
-          python audit/collect_evidence.py
 
       - name: Fail if any generated file is stale
         run: git diff --exit-code
+
+      # audit/*_SUMMARY.json record the commit they were generated from, which cannot match the
+      # committed value until the next commit lands. So this is gated on the script SUCCEEDING
+      # (the suite passes, every manifest verifies) rather than on a clean diff.
+      - name: Evidence summaries regenerate successfully
+        run: python audit/collect_evidence.py
 
       - name: Reference invariants survive a fresh run
         run: python -m assay_bench reference --check
