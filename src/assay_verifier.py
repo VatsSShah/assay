@@ -211,7 +211,8 @@ def _check_structure(manifest) -> None:
         _require(key in manifest, f"manifest missing required field {key!r}", MalformedManifest)
     # manifest_schema.json sets additionalProperties:false. Enforce it here too, otherwise a
     # submitter can smuggle an unreviewed field past the schema and into the integrity hash.
-    optional = ("scope", "validity", "provenance", "precommitment", "attestation", "utility")
+    optional = ("scope", "validity", "provenance", "precommitment", "attestation",
+                "utility", "diagnostics")
     unknown = sorted(set(manifest) - set(required) - set(optional))
     _require(not unknown, f"manifest has unknown field(s): {unknown}", MalformedManifest)
     _require(manifest["benchmark"] == "Assay",

@@ -21,7 +21,7 @@ REQUIRED_TOP_LEVEL = (
     "integrity_hash",
 )
 OPTIONAL_TOP_LEVEL = ("scope", "validity", "provenance", "precommitment", "attestation",
-                      "utility")
+                      "utility", "diagnostics")
 
 REQUIRED_FINDING = ("id", "attack", "mode", "oracle", "evidence_type", "fired", "asr",
                     "asr_ci", "weight")

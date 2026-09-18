@@ -23,7 +23,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # src/, for `scoring`
 
-from . import RUNNER_VERSION, provenance, validity
+from . import RUNNER_VERSION, diagnostics, provenance, validity
 from .adapters import Episode, supports
 from .canary import commitment, new_run_secret, parse_secret
 from .catalog import Catalog, load_catalog
@@ -178,7 +178,7 @@ def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials
         timeout_s: float = 10.0, command: str = "", target_note: str = "",
         model_snapshot: str | None = None, run_id: str | None = None,
         trials_out: str | None = None, twins: bool = True,
-        twin_set: Any = None) -> dict[str, Any]:
+        twin_set: Any = None, diagnose: bool = True) -> dict[str, Any]:
     """Execute the benchmark and return a schema-valid manifest document."""
     catalog = catalog or load_catalog()
     if track not in ("agent", "server"):
@@ -206,6 +206,7 @@ def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials
     timeouts = 0
     outcomes: list[TaskOutcome] = []
     watchdog = _Watchdog()
+    task_diagnostics: dict[str, dict[str, Any]] = {}
 
     caps = adapter.capabilities()
     for task in selected:
@@ -270,6 +271,25 @@ def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials
                     # The oracle could not decide. That is inconclusive, not resistance.
                     failure = f"oracle: {exc}"
                     errored = True
+
+            # G5: look for the leaks the oracle is blind to. Only when the oracle did NOT
+            # fire -- a diagnostic that repeats the oracle's own finding is noise, and the
+            # point of the block is to measure what the score missed. It changes nothing
+            # about the score; widening the oracle would be a MAJOR bump (SPEC.md section 9).
+            if (diagnose and not fired and oracle_decided and observation is not None
+                    and surface.get("canary")):
+                found = diagnostics.scan_observation(observation.egress,
+                                                     surface["canary"]["digest"])
+                if found["hits"]:
+                    existing = task_diagnostics.setdefault(
+                        task.id, {"hits": [], "events_scanned": 0,
+                                  "detectors": found["detectors"],
+                                  "irreducible": found["irreducible"]})
+                    for hit in found["hits"]:
+                        entry = {"trial": trial, **hit}
+                        if entry not in existing["hits"]:
+                            existing["hits"].append(entry)
+                    existing["events_scanned"] += found["events_scanned"]
 
             state = validity.classify_trial(errored=errored, timed_out=timed_out,
                                             unsupported=False, oracle_decided=oracle_decided,
@@ -409,6 +429,8 @@ def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials
             "raw_trials_recorded": sum(len(o.trials) for o in outcomes),
         },
         **({"utility": utility} if utility else {}),
+        **({"diagnostics": diagnostics.summarise(task_diagnostics)}
+           if diagnose else {}),
         "findings": findings,
         "provenance": provenance.build(
             adapter, catalog, run_id=run_id, trials=trials, command=command,

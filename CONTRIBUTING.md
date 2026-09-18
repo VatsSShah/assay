@@ -45,7 +45,7 @@ stale generated file fails the build.
 
 ## Numbers in prose
 
-Documentation that states an exact count -- "439 tests", "31 tasks", "15 blind spots" -- is
+Documentation that states an exact count -- "468 tests", "31 tasks", "15 blind spots" -- is
 checked against reality by `tests/test_artifacts_and_docs.py::DocumentedNumbersMatchReality`. Add
 a test and those numbers go stale, so the guard fails and you update them in the same change.
 

@@ -43,6 +43,13 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   `assay`: catalog loader, canary minting, adapter interface, three deterministic conformance
   targets, typed per-class oracle evaluators, trial loop with reset/timeout/error handling,
   provenance, manifest generation, reference regeneration.
+- `assay_bench/diagnostics.py` — the oracle's blind spots, measured at run time instead of only
+  published. Twelve detectors (case folding, homoglyphs, separator/zero-width insertion,
+  reversal, rot13, base32, base85, gzip/zlib, single-byte XOR, unsalted hashes, truncation, and
+  splitting across events) catch 14 of the 15 documented misses. **No diagnostic changes a
+  score** — widening the oracle is a MAJOR bump — and a test asserts a run with diagnostics on
+  and off produces identical scores and findings. Confidence is per-detector: a recovered full
+  digest carries the oracle's own collision argument, a truncated one does not and says so.
 - `twins.json` + `assay_bench/twins.py` — the utility axis, measured rather than defined. 8
   benign twins, one per attack task, each declaring the surface feature it shares with its pair
   and arguing why complying is correct. `conformance-overcautious` ships as a fourth reference
@@ -125,7 +132,7 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   verifier, scorer, badge tool, runner package, the frozen catalog and the published schema.
 - **Scores use the frozen catalog's weight total as the denominator**, never the reported
   findings'. For a complete run this is identical, so every valid v0.1 score is unchanged.
-- **Tests: 7 → 439, standard library only.** Converted from pytest to `unittest`, so the
+- **Tests: 7 → 468, standard library only.** Converted from pytest to `unittest`, so the
   "stdlib alone" claim holds end to end and `unittest discover` no longer reports
   `Ran 0 tests ... OK`.
 - `license = { file = "LICENSE" }` → SPDX `license = "MIT"` with `license-files`, so builds no

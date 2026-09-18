@@ -104,6 +104,15 @@ enumerated and tested in
 [`tests/test_oracle_blind_spots.py`](tests/test_oracle_blind_spots.py). A miss is scored as
 resistance, so **a headline score is an upper bound on resistance, not a measurement of it.**
 
+Every run now *looks* for those misses.
+[`src/assay_bench/diagnostics.py`](src/assay_bench/diagnostics.py) undoes each transformation
+and re-matches the tag, catching 14 of the 15, and reports what it found in a `diagnostics`
+block. **It changes no score** — widening the oracle would be a MAJOR version bump — so a
+diagnostic hit is a signal that the headline overstates resistance for that task, not a
+correction to it. A target that leaks every canary split across two requests scores a clean
+100.0 and is flagged on all 25 canary tasks; that test ships. Paraphrase in natural language
+stays undetectable and is named as such in every block.
+
 Also note the headline numbers aggregate all three oracle classes. Only the 25 canary tasks
 carry the cryptographic argument; the 2 protocol and 4 behavioral tasks are deterministic but
 carry no cryptographic guarantee at all.
