@@ -518,18 +518,37 @@ test fails if one does.
 
 ---
 
-## G14 — No release has been tagged and no changelog entry is published
+## G14 — Release process documented and rehearsed; the tag itself is blocked here
 
-**Status: partially closed, blocked on an owner decision for the release itself.**
+**Status: everything that can be done without credentials or direct network access is done. Two
+steps need the owner.**
 
-There is now a `CHANGELOG.md` with an explicit versioning model (package version, benchmark
-version, manifest format, validity rules and both schema versions are separate and named), a
-`SECURITY.md` with a disclosure path and an explicit list of what is *not* a vulnerability
-because it is a documented limit, and CI that builds a wheel and an sdist, runs `twine check
---strict`, installs into a clean venv and smoke-tests the CLIs from outside the checkout.
+`CHANGELOG.md` carries the versioning model (package, benchmark, manifest format, validity rules
+and both schema versions are separate and named), `SECURITY.md` carries a disclosure path and an
+explicit list of what is *not* a vulnerability because it is a documented limit, and
+[`RELEASING.md`](RELEASING.md) now documents the whole sequence.
 
-What does not exist: a git tag, a GitHub release, release notes attached to one, and a published
-package. Those need the owner (see also G3). Nothing in the repository claims any of them.
+**Rehearsed and passing**, from a clean clone of the pushed `main`:
+
+- 554 tests, 0 failures;
+- `python -m build` produces both artifacts, `twine check --strict` **PASSES** on each;
+- the wheel installs into a clean venv and runs from outside the checkout, including a Mode-A
+  run against a real MCP server;
+- `assay reference --check` reproduces the committed invariants;
+- `git diff --exit-code` is clean.
+
+**What could not be done from the audit environment:**
+
+- **The tag.** This container's git proxy accepts branch pushes and rejects tag refs. Both
+  annotated and lightweight tags fail with `send-pack: unexpected disconnect`, and — worse — the
+  retry then prints `Everything up-to-date`, so the exit code lies. `git ls-remote --tags origin`
+  confirms nothing was created. `RELEASING.md` warns about this. The tag has to be pushed from a
+  machine with direct access.
+- **The PyPI upload.** No credentials are present in this environment and none should be.
+  `RELEASING.md` has the exact sequence, and the rule stands: **do not claim PyPI availability
+  until a fresh public install works**, which tests currently enforce.
+
+Nothing in the repository claims a tag, a release or a published package.
 
 ---
 
