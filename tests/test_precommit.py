@@ -295,9 +295,11 @@ class PrecommitCommandLine(unittest.TestCase):
         self.registry = self.tmp / "registry"
 
     def _cli(self, *args):
+        import os
         import sys
-        return subprocess.run([sys.executable, "-m", "assay_bench", *args],
-                              cwd=Path(__file__).resolve().parent.parent,
+        root = Path(__file__).resolve().parent.parent
+        env = dict(os.environ, PYTHONPATH=str(root / "src"))
+        return subprocess.run([sys.executable, "-m", "assay_bench", *args], cwd=root, env=env,
                               capture_output=True, text=True, timeout=120)
 
     def test_precommit_writes_a_valid_record_and_keeps_the_secret_out_of_it(self):

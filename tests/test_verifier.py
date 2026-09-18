@@ -329,7 +329,8 @@ class CommandLine(unittest.TestCase):
     """Exit codes are part of the contract: CI and reviewers key on them."""
 
     def _run(self, *args, optimize=False):
-        cmd = [sys.executable] + (["-O"] if optimize else []) + [str(ROOT / "assay_verifier.py")]
+        cmd = [sys.executable] + (["-O"] if optimize else []) + [
+            str(ROOT / "src" / "assay_verifier.py")]
         return subprocess.run(cmd + list(args), capture_output=True, text=True, cwd=ROOT)
 
     def test_valid_manifest_exits_zero(self):

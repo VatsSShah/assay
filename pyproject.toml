@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]   # PEP 639 SPDX `license` string support
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,13 +8,19 @@ version = "0.2.0"
 description = "Assay: a canary-oracle task set, runner and levelled verifier for MCP security."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { file = "LICENSE" }
+# SPDX expression plus explicit license files: the old `license = { file = ... }` table
+# form is deprecated and makes setuptools warn on every build.
+license = "MIT"
+license-files = ["LICENSE", "NOTICE"]
 keywords = ["mcp", "security", "benchmark", "llm", "agent", "red-team", "canary"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Security",
 ]
 
@@ -37,6 +43,9 @@ Specification = "https://github.com/VatsSShah/assay/blob/main/SPEC.md"
 Leaderboard = "https://github.com/VatsSShah/assay/tree/main/leaderboard"
 
 [tool.setuptools]
+# src/ layout: nothing is importable from the repository root, so a test that passes is a test
+# that exercised the INSTALLED package rather than the checkout sitting next to it.
+package-dir = { "" = "src" }
 # The single-file verifier stays a top-level module on purpose: it is meant to be copied and
 # run anywhere with the standard library alone. `scoring` is the canonical scorer it is
 # parity-tested against, so the wheel must carry it too.
@@ -44,6 +53,8 @@ py-modules = ["assay_verifier", "scoring", "badge"]
 packages = ["assay_bench", "assay_bench.adapters"]
 
 [tool.setuptools.package-data]
-# Generated from the canonical root tasks.json by `python -m assay_bench.sync_data`; CI fails
-# if the two drift. The installed CLI needs it to bind findings to the frozen catalog.
+# Generated from the canonical root tasks.json and manifest_schema.json by
+# `python -m assay_bench.sync_data`; CI fails if they drift. The installed CLI needs the catalog
+# to bind findings to frozen tasks, and the schema travels with the code so the published
+# contract is never separated from the implementation that enforces it.
 assay_bench = ["data/*.json"]

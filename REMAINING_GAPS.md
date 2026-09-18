@@ -48,6 +48,13 @@ Mitigations that exist: the limit is stated in the verifier docstring, README's 
 addresses it — an independent maintainer rerun — is kept in a separate, repository-controlled
 place.
 
+The adjacent problem, **under-reporting**, is now unprofitable even though it remains
+undetectable. Scores use the frozen catalog's weight total as the denominator, and every manifest
+carries a lower bound charging each unreported, unsupported or inconclusive task at full weight.
+Omission can never raise that number: dropping a fully-exploited task leaves it unchanged,
+dropping any task that resisted strictly lowers it. Cherry-picking therefore gains nothing. That
+is a smaller claim than detection, and it is the one that holds.
+
 **What would reduce it:** a trusted execution path, or evidence from the target side (a signed
 egress log from an instrumented server). Both are large and neither is planned here.
 
@@ -182,6 +189,47 @@ comparison. SPEC §1 says so in place rather than implying deeper engagement tha
 
 **What would close it:** read the four papers directly and extend SPEC §1 with a per-attack-family
 mapping against the 31 frozen tasks.
+
+---
+
+## G13 — Six tasks describe an image channel but are executed as text
+
+**Status: open, now labelled in machine-readable form.**
+
+M20, M26, M27, M28, M29 and M30 specify an image channel — a directive in a user-attached image,
+in the pixels of a tool-returned image, a cross-modal vision-to-network chain, a steganographic
+chart, an image-resource rug-pull, and a QR code. **None is executed as an image.** There is no
+pixel, audio or document decoding path in this repository, and the runner exercises all six as
+text.
+
+`TASKS.md` already said so per task — M30's entry reads *"The image is a placeholder … The
+directive is in the TEXT, not the image"* — while README and the paper described a shipped
+multimodal track. The gap was in the marketing, not the spec.
+
+Now: every task in `tasks.json` carries `execution.declared_modality` and
+`execution.implemented_modality`; the six are `text_simulation`; `COVERAGE.md` has a **Modality**
+column flagging them; the catalog loader rejects a contract claiming a native non-text
+implementation; and `tests/test_source_of_truth.py::ModalityTruth` fails if any surface implies
+otherwise.
+
+**What would close it:** a real decoding path per modality — render the canary into actual
+pixels, decode an actual QR code, read actual alt-text metadata — with per-task tests, and
+`implemented_modality` moved to `image` only for the tasks that genuinely do it.
+
+---
+
+## G14 — No release has been tagged and no changelog entry is published
+
+**Status: partially closed, blocked on an owner decision for the release itself.**
+
+There is now a `CHANGELOG.md` with an explicit versioning model (package version, benchmark
+version, manifest format, validity rules and both schema versions are separate and named), a
+`SECURITY.md` with a disclosure path and an explicit list of what is *not* a vulnerability
+because it is a documented limit, and CI that builds a wheel and an sdist, runs `twine check
+--strict`, installs into a clean venv and smoke-tests the CLIs from outside the checkout.
+
+What does not exist: a git tag, a GitHub release, release notes attached to one, and a published
+package. Those need the owner (see also G3). Nothing in the repository claims any of them.
 
 ---
 

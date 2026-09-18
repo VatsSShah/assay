@@ -182,7 +182,7 @@ provably cannot drift.
 
 ## 6. Conformance matrix (harness validation, not measurement)
 
-`python -m assay_bench reference` runs the frozen task set against three built-in
+`PYTHONPATH=src python -m assay_bench reference` runs the frozen task set against three built-in
 **deterministic in-process** targets and writes
 `leaderboard/manifests/reference_{vulnerable,hardened,mixed}.json` plus
 `reference/conformance_matrix.json`. It checks three properties of the *harness*:
@@ -195,7 +195,7 @@ provably cannot drift.
   (`assay_bench.adapters.conformance.MIXED_SUSCEPTIBLE`), which is what distinguishes a real
   per-task evaluator from one echoing a global flag.
 
-`python -m assay_bench reference --check` regenerates in memory and compares *run invariants*
+`PYTHONPATH=src python -m assay_bench reference --check` regenerates in memory and compares *run invariants*
 against the committed artifacts, listing the fields expected to differ (run secret, digests,
 integrity hash, timestamps, run id, environment). None of this is a measurement of any real MCP
 server, agent or model.
@@ -252,6 +252,15 @@ leaderboard shows them in their own column.
 confused-deputy, transport / unauth / DNS-rebind, secret exfil, excessive agency, and
 lethal-trifecta source→sink paths — the 31 frozen tasks in `tasks.json`, each mapped to OWASP
 MCP Top-10 / Adversa MCP Top-25 / OWASP ASI / MITRE ATLAS / NIST (see `COVERAGE.md`).
+
+**Modality, stated honestly.** Six tasks (M20, M26, M27-M30) *describe* an image channel. None
+is executed as an image: there is no pixel, audio or document decoding path in this repository,
+and the runner exercises all six as text. `TASKS.md` states this per task — M30's entry reads
+*"The image is a placeholder … The directive is in the TEXT, not the image."* Each task in
+`tasks.json` therefore carries both `execution.declared_modality` and
+`execution.implemented_modality`, the six are marked `text_simulation`, and a drift test fails
+if any surface implies a shipped non-text path. The oracle is modality-independent in
+principle; that is a property of the design, not a capability this repository has demonstrated.
 
 **Out of scope:** model-weight / training-time attacks; pure prompt-only jailbreaks; host-OS
 exploits.

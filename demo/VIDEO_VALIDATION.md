@@ -4,6 +4,22 @@ The previous 18-second "demo video" shipped with this project was a **frozen ter
 a video container**. It was rejected, is not reused here in any form, and was not upscaled,
 re-encoded or animated. This recording was made from scratch by running the demo live.
 
+## Where the artifacts are
+
+This is a public repository and a screen recording can capture more than its author intended, so
+**the video and its frames are not committed.** They are delivered out of band and regenerated
+with one command:
+
+```bash
+bash demo/record_video.sh        # writes demo/out/, then validates it
+```
+
+What *is* committed is the evidence needed to check every claim below:
+`demo/recording/transcript.txt` (the exact text that appeared on screen) and
+`demo/recording/validation.json` (a SHA-256 for the video and for each of the 31 sampled
+frames). A test asserts the numbers in this file match that report, and that the binaries are
+not tracked.
+
 ## The recording
 
 | property | value |
@@ -14,8 +30,8 @@ re-encoded or animated. This recording was made from scratch by running the demo
 | Frame rate | 10 fps |
 | Frames encoded | 216 |
 | Duration | 21.6 s |
-| Size | 3,369,398 bytes |
-| SHA-256 | `6e86bc078ec9879c55a20701ac78744f66051b5c4bf72b74ab072d22dbaa759c` |
+| Size | 3,236,663 bytes |
+| SHA-256 | `2e8764bc3507ec0335c6fab24296d36baea09603efeec3516b51b2d7ac93abc7` |
 | Demo exit status | 0 |
 | ffmpeg exit status | 0 |
 | Produced by | `bash demo/record_video.sh` |
@@ -43,19 +59,19 @@ by a histogram over each JPEG's entropy stream as a coarse change magnitude. The
 | Distinct frames (by SHA-256) | **31 / 31** |
 | Adjacent pairs that are byte-identical | **0** |
 | Longest run of identical consecutive samples | **0** |
-| Fraction of adjacent pairs showing visible change | **1.0** |
-| Mean signature distance | 0.0611 |
-| Min / max signature distance | 0.0015 / 0.2068 |
-| Mean distance, first half of timeline | 0.0694 |
-| Mean distance, second half of timeline | 0.0529 |
+| Fraction of adjacent pairs showing visible change | **0.9667** |
+| Mean signature distance | 0.0639 |
+| Min / max signature distance | 0.0005 / 0.2675 |
+| Mean distance, first half of timeline | 0.0706 |
+| Mean distance, second half of timeline | 0.0572 |
 
 ### Gate
 
 | check | threshold | result |
 |---|---|---|
-| `most_pairs_change` | ≥ 75 % of adjacent pairs differ | ✅ 100 % |
+| `most_pairs_change` | ≥ 75 % of adjacent pairs differ | ✅ 97% |
 | `no_long_frozen_stretch` | ≤ 1 consecutive identical sample | ✅ 0 |
-| `change_spread_across_timeline` | both halves show movement | ✅ 0.069 / 0.053 |
+| `change_spread_across_timeline` | both halves show movement | ✅ 0.071 / 0.057 |
 | `enough_distinct_frames` | ≥ 80 % of samples distinct | ✅ 100 % |
 
 **Verdict: `time-varying`.**

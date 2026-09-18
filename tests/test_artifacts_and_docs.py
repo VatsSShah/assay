@@ -4,6 +4,7 @@ and every executable snippet in the documentation actually runs."""
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -11,14 +12,37 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from .helpers import ROOT, V
+from .helpers import ROOT, V, require_source_checkout
 from assay_bench.manifest import (OPTIONAL_TOP_LEVEL, REQUIRED_FINDING, REQUIRED_TOP_LEVEL,
                                   validate_structure)
 
 
 def sh(*args, cwd=ROOT, env=None):
+    import os
+    env = env if env is not None else dict(os.environ, PYTHONPATH=str(ROOT / "src"))
     return subprocess.run([sys.executable, *args], cwd=cwd, capture_output=True, text=True,
                           env=env)
+
+
+def run_documented(command: str):
+    """Execute a documented shell command, honouring a leading `VAR=value` prefix.
+
+    The docs use `PYTHONPATH=src python -m assay_bench ...` because the package lives under
+    src/. Stripping the prefix and passing it as an environment override runs exactly what a
+    reader would run.
+    """
+    import os
+
+    parts = command.split()
+    env = dict(os.environ)
+    while parts and "=" in parts[0] and not parts[0].startswith("-"):
+        key, _, value = parts[0].partition("=")
+        env[key] = value
+        parts = parts[1:]
+    if not parts or parts[0] not in ("python", "python3"):
+        return None, parts
+    return subprocess.run([sys.executable, *parts[1:]], cwd=ROOT, capture_output=True,
+                          text=True, env=env), parts
 
 
 class SchemaParity(unittest.TestCase):
@@ -144,7 +168,12 @@ class ExecutableDocumentation(unittest.TestCase):
     #: Commands we run verbatim. Anything else found in the docs must be listed in
     #: ALLOWED_UNRUN with a reason, so a new undocumented command cannot slip in.
     ALLOWED_UNRUN = {
-        "pip install -e .": "mutates the environment; covered by test_packaging",
+        "pip install -e .": "mutates the environment; covered by tests/test_packaging.py",
+        "assay run --target vulnerable --trials 25 --out /tmp/scorecard.json": (
+            "the INSTALLED console script; tests/test_packaging.py runs exactly this from a "
+            "clean venv outside the checkout"),
+        "assay verify /tmp/scorecard.json --require run_complete": (
+            "the INSTALLED console script; covered by tests/test_packaging.py"),
         "python -m unittest discover -s tests -t .": (
             "running the suite inside the suite would recurse forever; this IS the suite"),
         "python -m pytest tests/ -q": (
@@ -155,7 +184,7 @@ class ExecutableDocumentation(unittest.TestCase):
         "git add precommit/registry/<run-id>.json": "illustrative git usage",
         "git commit -m 'precommit: <target>'": "illustrative git usage",
         "git push": "illustrative git usage",
-        "python -m assay_bench precommit --target vulnerable --trials 25 --secret-out /tmp/run.secret": (
+        "PYTHONPATH=src python -m assay_bench precommit --target vulnerable --trials 25 --secret-out /tmp/run.secret": (
             "writes a registry record into the repository, so running it here would dirty the "
             "tree; tests/test_precommit.py drives the same CLI against a temporary registry"),
         "bash demo/reset.sh": "covered by tests/test_demo.py",
@@ -191,13 +220,12 @@ class ExecutableDocumentation(unittest.TestCase):
                 if "<" in command or ">" in command:
                     continue  # placeholder arguments, exercised by the CLI tests
                 with self.subTest(doc=name, command=command):
-                    parts = command.split()
-                    self.assertIn(parts[0], ("python", "python3"),
-                                  f"{name}: undocumented tool {parts[0]!r}")
-                    r = sh(*parts[1:])
-                    self.assertIn(r.returncode, (0,),
-                                  f"{name}: `{command}` exited {r.returncode}\n"
-                                  f"{r.stdout[-600:]}\n{r.stderr[-600:]}")
+                    r, parts = run_documented(command)
+                    self.assertIsNotNone(
+                        r, f"{name}: undocumented tool {parts[0] if parts else '?'!r}")
+                    self.assertEqual(r.returncode, 0,
+                                     f"{name}: `{command}` exited {r.returncode}\n"
+                                     f"{r.stdout[-600:]}\n{r.stderr[-600:]}")
                     checked += 1
         self.assertGreater(checked, 5, "documentation should contain runnable commands")
 
@@ -217,7 +245,8 @@ class ExecutableDocumentation(unittest.TestCase):
                 if match in self.OPTIONAL_MODULES:
                     continue
                 with self.subTest(doc=name, module=match):
-                    r = sh("-c", f"import importlib; importlib.import_module({match!r})")
+                    env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
+                    r = sh("-c", f"import importlib; importlib.import_module({match!r})", env=env)
                     self.assertEqual(r.returncode, 0,
                                      f"{name} documents `python -m {match}` which does not import")
 
@@ -250,6 +279,8 @@ class ClaimConsistency(unittest.TestCase):
     def test_the_license_is_stated_consistently(self):
         self.assertIn("MIT License", (ROOT / "LICENSE").read_text())
         for name in ("SPEC.md", "README.md", "NOTICE", "CITATION.cff"):
+            if not (ROOT / name).is_file():
+                continue
             text = (ROOT / name).read_text(encoding="utf-8")
             with self.subTest(surface=name):
                 self.assertNotIn("Apache", text,

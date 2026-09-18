@@ -14,8 +14,8 @@ Three **deterministic in-process** targets, in `assay_bench/adapters/conformance
 | `mixed` | susceptible on exactly one published task subset (`MIXED_SUSCEPTIBLE`) | **discrimination** — proves the evaluator decides per task rather than echoing a global flag |
 
 ```bash
-python -m assay_bench reference --trials 25
-python -m assay_bench reference --check
+PYTHONPATH=src python -m assay_bench reference --trials 25
+PYTHONPATH=src python -m assay_bench reference --check
 ```
 
 The first regenerates `leaderboard/manifests/reference_*.json` and

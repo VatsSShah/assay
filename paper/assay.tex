@@ -221,13 +221,22 @@ interval over such a cell describes the trial count, not uncertainty about a pop
 earlier revision reported $0/625$ with a Wilson bound of $0.62\%$, and we withdraw that framing:
 the 625 figure is $25$ tasks $\times\ 25$ identical trials against a stub we wrote.
 
-\section{Multimodal extension}
-The oracle's modality-independence yields a track no MCP benchmark has. Assay ships M20
-(directive in a user-attached image) and \textbf{M26}, image-result poisoning, the directive
-rides the pixels of an image a \emph{tool returns} mid-conversation, invisible to both text
-filters and user-input image scanning. Designed extensions (cross-modal capability chains,
-steganographic chart canaries, image-resource rug-pulls, QR exfil) are all scored by the same
-canary at the boundary.
+\section{Multimodal extension: designed, simulated, not executed}
+The oracle is modality-independent in principle: whether the directive rides text, pixels, a
+document or audio, success is the same recomputation, so no per-modality judge enters the loop.
+Six tasks are specified against that idea --- M20 (directive in a user-attached image), M26
+(directive in the pixels of a tool-returned image), M27 (a cross-modal vision-to-network chain),
+M28 (a steganographic chart canary in alt-text), M29 (an image-resource rug-pull) and M30 (a QR
+code encoding an egress URL).
+
+\textbf{None of the six is executed as an image.} The released runner has no pixel, audio or
+document decoding path, and exercises all six as text. The task catalog says so in
+machine-readable form: each task carries both a declared modality and an implemented modality,
+and these six are marked \texttt{text\_simulation}. An earlier revision of this paper described
+them as a shipped track; that was wrong, and a drift test now fails if any surface implies it.
+
+Modality-independence therefore remains a property of the design rather than a capability this
+work has demonstrated.
 
 \section{Limitations}
 Stated plainly, because most of them are structural rather than temporary.

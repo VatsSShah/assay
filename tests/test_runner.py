@@ -84,7 +84,7 @@ class FrozenFieldsComeFromTheCatalog(unittest.TestCase):
     def test_the_runner_has_no_second_copy_of_the_weights(self):
         """A grep-style guard: weights must not be literal anywhere in the runner."""
         from pathlib import Path
-        source = (Path(__file__).resolve().parent.parent / "assay_bench" / "runner.py").read_text()
+        source = (Path(__file__).resolve().parent.parent / "src" / "assay_bench" / "runner.py").read_text()
         for literal in ("0.7", "0.4", "1.0,", "critical", "high\"", "medium\""):
             self.assertNotIn(f"weight = {literal}", source)
         self.assertIn("task.weight", source)
@@ -94,9 +94,19 @@ class ErrorsTimeoutsAndIsolation(unittest.TestCase):
     def test_adapter_failure_is_recorded_not_scored_as_resistance(self):
         m = run(FlakyTarget("M4"), catalog=CATALOG, trials=3, command="test")
         self.assertEqual(m["scope"]["completion"], "partial")
-        self.assertNotIn("M4", {f["id"] for f in m["findings"]})
+        # The failing task is REPORTED, as inconclusive. v0.1 dropped it, which is what let a
+        # short report look like a clean one.
+        self.assertIn("M4", {f["id"] for f in m["findings"]})
+        self.assertEqual(m["validity"]["per_task_outcomes"]["M4"], {"errored": 3})
+        self.assertIn("M4", m["validity"]["assessment"]["inconclusive_tasks"])
         self.assertEqual(len(m["provenance"]["errors"]), 3)
         self.assertTrue(all(e["task"] == "M4" for e in m["provenance"]["errors"]))
+
+    def test_an_inconclusive_task_cannot_improve_the_lower_bound(self):
+        clean = run(build("hardened"), catalog=CATALOG, trials=3, command="test")
+        broken = run(FlakyTarget("M4"), catalog=CATALOG, trials=3, command="test")
+        self.assertEqual(clean["validity"]["agent_resistance_lower_bound"], 100.0)
+        self.assertLess(broken["validity"]["agent_resistance_lower_bound"], 100.0)
 
     def test_a_partial_run_cannot_reach_run_complete(self):
         m = run(FlakyTarget("M4"), catalog=CATALOG, trials=3, command="test")
@@ -125,9 +135,14 @@ class ErrorsTimeoutsAndIsolation(unittest.TestCase):
 
         m = run(Sleeper(), catalog=CATALOG, trials=1, task_ids=["M1"], timeout_s=0.05,
                 command="test")
-        self.assertEqual(m["provenance"]["timeouts"], 1)
-        self.assertEqual(m["findings"], [])
+        # One trial plus the bounded retries, each of which also times out.
+        self.assertGreaterEqual(m["provenance"]["timeouts"], 1)
+        self.assertEqual([f["id"] for f in m["findings"]], ["M1"])
+        self.assertEqual(m["validity"]["per_task_outcomes"]["M1"], {"timed_out": 1})
+        self.assertEqual(m["findings"][0]["asr"], 0.0)
+        self.assertFalse(m["findings"][0]["fired"])
         self.assertEqual(m["scope"]["completion"], "partial")
+        self.assertIn("timeouts", m["validity"]["assessment"]["reasons"])
 
     def test_state_leaking_between_trials_is_an_error_not_a_silent_result(self):
         target = build("vulnerable")
@@ -198,3 +213,72 @@ class Determinism(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RawTrialRecords(unittest.TestCase):
+    """The per-trial log: evidence below the level of the manifest's own summary."""
+
+    def _run_with_log(self, target="mixed", trials=3):
+        import json
+        import tempfile
+        from pathlib import Path
+
+        out = Path(tempfile.mkdtemp(prefix="assay-trials-")) / "trials.json"
+        manifest = run(build(target), catalog=CATALOG, trials=trials, command="test",
+                       trials_out=str(out))
+        return manifest, json.loads(out.read_text())
+
+    def test_the_log_is_written_and_binds_its_manifest(self):
+        manifest, log = self._run_with_log()
+        self.assertEqual(log["schema"], "assay/raw-trials/1")
+        self.assertEqual(log["manifest_integrity_hash"], manifest["integrity_hash"])
+        self.assertEqual(log["task_set_digest"], CATALOG.digest)
+
+    def test_every_task_and_every_trial_is_recorded(self):
+        manifest, log = self._run_with_log(trials=4)
+        self.assertEqual(sorted(log["tasks"]), sorted(t.id for t in CATALOG))
+        for task_id, records in log["tasks"].items():
+            with self.subTest(task=task_id):
+                self.assertEqual(len(records), 4)
+                self.assertEqual([r["trial"] for r in records], [0, 1, 2, 3])
+
+    def test_a_canary_trial_records_its_digest_preimage_and_envelope(self):
+        _, log = self._run_with_log()
+        for task in CATALOG:
+            if task.oracle != "canary":
+                continue
+            with self.subTest(task=task.id):
+                record = log["tasks"][task.id][0]
+                self.assertEqual(len(record["canary_digest"]), 16)
+                self.assertTrue(record["preimage"].startswith(f"assay/{task.id}|"))
+                self.assertIn("canary_envelope", record)
+
+    def test_the_log_never_contains_the_run_secret(self):
+        import json
+
+        manifest, log = self._run_with_log()
+        self.assertNotIn(manifest["run_secret_reveal"], json.dumps(log))
+
+    def test_a_recorded_digest_re_derives_from_the_manifest_reveal(self):
+        manifest, log = self._run_with_log()
+        secret = manifest["run_secret_reveal"]
+        for task in CATALOG:
+            if task.oracle != "canary":
+                continue
+            with self.subTest(task=task.id):
+                record = log["tasks"][task.id][0]
+                origin, tool, step = record["preimage"].rsplit("|", 2)[0], None, None
+                parts = record["preimage"].split("|")
+                self.assertEqual(V.digest(secret, "|".join(parts)), record["canary_digest"])
+
+    def test_states_in_the_log_agree_with_the_manifest_tally(self):
+        manifest, log = self._run_with_log(trials=5)
+        for task_id, tally in manifest["validity"]["per_task_outcomes"].items():
+            with self.subTest(task=task_id):
+                from collections import Counter
+                self.assertEqual(dict(Counter(r["state"] for r in log["tasks"][task_id])), tally)
+
+    def test_no_log_is_written_unless_asked(self):
+        manifest = run(build("hardened"), catalog=CATALOG, trials=2, command="test")
+        self.assertFalse([k for k in manifest if k.startswith("_")],
+                         "run() must return a pure manifest, with no sidecar keys")

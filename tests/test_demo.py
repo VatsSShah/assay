@@ -14,7 +14,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from .helpers import ROOT, V
+from .helpers import ROOT, V, require_source_checkout
 
 DEMO = ROOT / "demo"
 TIMEOUT = 300
@@ -119,48 +119,103 @@ class DemoRuns(unittest.TestCase):
 
 
 class PublishedRecording(unittest.TestCase):
-    """The committed recording must remain what VIDEO_VALIDATION.md says it is."""
+    """The recording's TEXT evidence is committed; the binaries are not.
+
+    This is a public repository, and a screen recording can capture more than its author
+    intended, so `demo/recording/assay-demo.webm` and the sampled frames are delivered out of
+    band and regenerated on demand. What stays in git is everything needed to check the claims
+    in `demo/VIDEO_VALIDATION.md`: the transcript, and a validation report carrying a SHA-256
+    for the video and for every sampled frame.
+
+    The binary-dependent checks below run when the artifacts are present (right after
+    `bash demo/record_video.sh`) and skip with a stated reason when they are not.
+    """
 
     RECORDING = DEMO / "recording"
 
-    def test_the_recording_and_its_frames_are_committed(self):
-        self.assertTrue((self.RECORDING / "assay-demo.webm").is_file())
-        self.assertTrue((self.RECORDING / "validation.json").is_file())
+    def setUp(self):
+        self.report_path = self.RECORDING / "validation.json"
+        if not self.report_path.is_file():
+            require_source_checkout(self)
+        self.assertTrue(self.report_path.is_file(),
+                        "the validation report must stay committed: it is the evidence")
+        self.report = json.loads(self.report_path.read_text())
+
+    # -- always checkable, from committed text alone ------------------------------
+    def test_the_text_evidence_is_committed(self):
         self.assertTrue((self.RECORDING / "transcript.txt").is_file())
-        self.assertGreaterEqual(len(list((self.RECORDING / "frames").glob("*.jpg"))), 20)
+        self.assertIn("sha256", self.report["video"])
+        self.assertGreaterEqual(len(self.report["samples"]), 20)
 
-    def test_the_recorded_video_hash_matches_the_validation_report(self):
-        import hashlib
-        report = json.loads((self.RECORDING / "validation.json").read_text())
-        actual = hashlib.sha256((self.RECORDING / "assay-demo.webm").read_bytes()).hexdigest()
-        self.assertEqual(actual, report["video"]["sha256"])
+    def test_the_report_verdict_and_gate_are_recorded(self):
+        self.assertEqual(self.report["verdict"], "time-varying")
+        self.assertTrue(all(self.report["gate"].values()), self.report["gate"])
+        self.assertEqual(self.report["longest_frozen_run_samples"], 0)
+        self.assertEqual(self.report["distinct_frames"], self.report["frames_sampled"])
 
-    def test_every_sampled_frame_hash_matches_the_report(self):
-        import hashlib
-        report = json.loads((self.RECORDING / "validation.json").read_text())
-        for sample in report["samples"]:
-            with self.subTest(frame=sample["frame"]):
-                path = self.RECORDING / "frames" / sample["frame"]
-                self.assertTrue(path.is_file())
-                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(),
-                                 sample["sha256"])
+    def test_every_sampled_frame_hash_is_distinct_in_the_report(self):
+        """The core claim, checkable without the frames: no two samples share a hash."""
+        hashes = [s["sha256"] for s in self.report["samples"]]
+        self.assertEqual(len(set(hashes)), len(hashes))
 
-    def test_the_recording_revalidates_as_time_varying(self):
-        r = subprocess.run(
-            ["python3", str(DEMO / "validate_video.py"),
-             str(self.RECORDING / "assay-demo.webm"), str(self.RECORDING / "frames")],
-            cwd=ROOT, capture_output=True, text=True, timeout=TIMEOUT)
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        summary = json.loads(r.stdout)
-        self.assertEqual(summary["verdict"], "time-varying")
-        self.assertEqual(summary["longest_frozen_run_samples"], 0)
-        self.assertTrue(all(summary["gate"].values()))
+    def test_the_documented_numbers_match_the_report(self):
+        doc = (DEMO / "VIDEO_VALIDATION.md").read_text()
+        self.assertIn(self.report["video"]["sha256"], doc)
+        self.assertIn(str(self.report["frames_sampled"]), doc)
 
     def test_the_transcript_shows_the_tamper_rejection(self):
         transcript = (self.RECORDING / "transcript.txt").read_text()
         self.assertIn("does not recompute", transcript)
         self.assertIn("exit status: 1", transcript)
         self.assertIn("demo exit status: 0", transcript)
+
+    def test_the_transcript_never_claims_a_real_target(self):
+        transcript = (self.RECORDING / "transcript.txt").read_text()
+        self.assertIn("real_target=False", transcript)
+        self.assertIn("No live MCP server", transcript)
+
+    def test_the_binaries_are_not_tracked(self):
+        require_source_checkout(self)
+        """A public repo should not carry the recording; regenerating it is one command."""
+        r = subprocess.run(["git", "ls-files", "demo/recording"], cwd=ROOT,
+                           capture_output=True, text=True)
+        tracked = set(r.stdout.split())
+        self.assertNotIn("demo/recording/assay-demo.webm", tracked)
+        self.assertFalse([p for p in tracked if p.endswith(".jpg")])
+
+    # -- only when the artifacts are present ---------------------------------------
+    def _require_binaries(self):
+        video = self.RECORDING / "assay-demo.webm"
+        frames = self.RECORDING / "frames"
+        if not video.is_file() or not frames.is_dir():
+            self.skipTest("recording binaries are not committed; run `bash demo/record_video.sh` "
+                          "and copy demo/out/ into demo/recording/ to check them here")
+        return video, frames
+
+    def test_the_recorded_video_hash_matches_the_report(self):
+        import hashlib
+        video, _ = self._require_binaries()
+        self.assertEqual(hashlib.sha256(video.read_bytes()).hexdigest(),
+                         self.report["video"]["sha256"])
+
+    def test_every_frame_on_disk_matches_its_recorded_hash(self):
+        import hashlib
+        _, frames = self._require_binaries()
+        for sample in self.report["samples"]:
+            with self.subTest(frame=sample["frame"]):
+                path = frames / sample["frame"]
+                self.assertTrue(path.is_file())
+                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(),
+                                 sample["sha256"])
+
+    def test_the_recording_revalidates_as_time_varying(self):
+        video, frames = self._require_binaries()
+        r = subprocess.run(["python3", str(DEMO / "validate_video.py"), str(video), str(frames)],
+                           cwd=ROOT, capture_output=True, text=True, timeout=TIMEOUT)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        summary = json.loads(r.stdout)
+        self.assertEqual(summary["verdict"], "time-varying")
+        self.assertTrue(all(summary["gate"].values()))
 
 
 if __name__ == "__main__":

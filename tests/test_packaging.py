@@ -20,12 +20,15 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from .helpers import ROOT
+from .helpers import ROOT, is_source_checkout
 
 BUILD_TIMEOUT = 300
 
 
 def _can_build() -> tuple[bool, str]:
+    if not is_source_checkout():
+        return False, ("checkout-only: this tree was unpacked from an sdist, and rebuilding a "
+                       "distribution from a distribution is not what this suite checks")
     try:
         import setuptools  # noqa: F401
         import wheel  # noqa: F401
@@ -69,6 +72,14 @@ class Packaging(unittest.TestCase):
         if not wheels:  # pragma: no cover
             raise unittest.SkipTest("build produced no wheel")
         cls.wheel_path = wheels[0]
+        cls.build_output = build.stdout + build.stderr
+
+        sdist = subprocess.run(
+            [str(python), "-c",
+             "import sys, setuptools.build_meta as b; print(b.build_sdist(sys.argv[1]))",
+             str(out)],
+            cwd=ROOT, capture_output=True, text=True, timeout=BUILD_TIMEOUT)
+        cls.sdist_path = next(iter(sorted(out.glob("*.tar.gz"))), None) if sdist.returncode == 0 else None
 
         pip = cls.venv / "bin" / "pip"
         install = subprocess.run(
@@ -108,9 +119,50 @@ class Packaging(unittest.TestCase):
                          "assay_bench/runner.py", "assay_bench/catalog.py",
                          "assay_bench/precommit.py", "assay_bench/attest.py",
                          "assay_bench/adapters/__init__.py",
-                         "assay_bench/adapters/conformance.py"):
+                         "assay_bench/adapters/conformance.py",
+                         "assay_bench/validity.py"):
             with self.subTest(member=expected):
                 self.assertIn(expected, names)
+
+    def test_the_build_emits_no_deprecation_warning(self):
+        """The old `license = {file = ...}` table made setuptools warn on every build."""
+        lowered = self.build_output.lower()
+        for phrase in ("deprecated", "setuptoolsdeprecationwarning", "will be removed"):
+            self.assertNotIn(phrase, lowered,
+                             f"build emitted a deprecation notice:\n{self.build_output[-800:]}")
+
+    def test_the_wheel_declares_an_spdx_license(self):
+        import zipfile
+        metadata = zipfile.ZipFile(self.wheel_path).read(
+            f"assay_bench-{self._version()}.dist-info/METADATA").decode()
+        self.assertIn("License-Expression: MIT", metadata)
+        self.assertIn("License-File: LICENSE", metadata)
+
+    def test_an_sdist_builds_and_carries_what_a_rebuild_needs(self):
+        if self.sdist_path is None:  # pragma: no cover - environment dependent
+            self.skipTest("sdist build not available in this environment")
+        import tarfile
+        with tarfile.open(self.sdist_path) as tar:
+            names = {n.split("/", 1)[1] for n in tar.getnames() if "/" in n}
+        for expected in ("pyproject.toml", "tasks.json", "manifest_schema.json", "LICENSE",
+                         "README.md", "src/assay_verifier.py",
+                         "src/assay_bench/runner.py", "src/assay_bench/data/tasks.json",
+                         "tests/test_verifier.py", "leaderboard/build_site.py"):
+            with self.subTest(member=expected):
+                self.assertIn(expected, names)
+        # The recording binaries must never travel in a distribution.
+        self.assertFalse([n for n in names if n.endswith((".webm", ".mp4", ".jpg"))])
+
+    def test_wheel_ships_the_published_schema(self):
+        import zipfile
+        self.assertIn("assay_bench/data/manifest_schema.json",
+                      zipfile.ZipFile(self.wheel_path).namelist())
+
+    @classmethod
+    def _version(cls):
+        import tomllib
+        with open(ROOT / "pyproject.toml", "rb") as fh:
+            return tomllib.load(fh)["project"]["version"]
 
     def test_wheel_ships_the_frozen_task_set(self):
         names = zipfile.ZipFile(self.wheel_path).namelist()
@@ -123,10 +175,18 @@ class Packaging(unittest.TestCase):
         self.assertEqual(packaged, (ROOT / "tasks.json").read_bytes())
 
     # -- imports and CLIs from outside the checkout -------------------------------
+    def test_nothing_is_importable_from_the_repository_root(self):
+        """The src/ layout exists so a passing test cannot be an accident of cwd."""
+        for name in ("assay_verifier", "scoring", "badge", "assay_bench"):
+            with self.subTest(module=name):
+                self.assertFalse((ROOT / f"{name}.py").exists())
+                self.assertFalse((ROOT / name).is_dir())
+
     def test_imports_work_outside_the_checkout(self):
         r = self._python(
             "import assay_verifier, scoring, badge, assay_bench, assay_bench.cli, "
-            "assay_bench.runner, assay_bench.precommit, assay_bench.attest; "
+            "assay_bench.runner, assay_bench.precommit, assay_bench.attest, "
+            "assay_bench.validity; "
             "from assay_bench.catalog import load_catalog; "
             "print(len(load_catalog()))")
         self.assertEqual(r.returncode, 0, r.stderr)

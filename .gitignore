@@ -13,3 +13,13 @@ venv/
 # run, so it must never be tracked: a demo run would otherwise dirty the tree and break the
 # `git diff --exit-code` gate. The published recording lives in demo/recording/ instead.
 demo/out/
+
+# The recorded demo video and its sampled frames are NOT committed. This is a public
+# repository and a screen recording can pick up more than its author intended, so the binary
+# artifacts are delivered out of band and regenerated on demand with `bash demo/record_video.sh`.
+# The text evidence that describes them (transcript, validation report with per-frame hashes)
+# IS committed, so the claims in demo/VIDEO_VALIDATION.md remain checkable.
+demo/recording/*.webm
+demo/recording/*.mp4
+demo/recording/frames/
+demo/recording/ffmpeg.log

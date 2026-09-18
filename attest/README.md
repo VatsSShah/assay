@@ -13,7 +13,7 @@ matches on invariants and differs on those fields is exactly what an honest repr
 like.
 
 ```bash
-python -m assay_bench attest --submitted <manifest.json> --rerun <rerun.json> \
+PYTHONPATH=src python -m assay_bench attest --submitted <manifest.json> --rerun <rerun.json> \
     --maintainer <name> --out attest/<name>.json
 ```
 

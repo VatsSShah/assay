@@ -13,6 +13,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 OUT="${ASSAY_DEMO_OUT:-$HERE/out}"
 PY="${PYTHON:-python3}"
+export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
 PAUSE="${ASSAY_DEMO_PAUSE:-0}"
 
 mkdir -p "$OUT"
@@ -37,7 +38,13 @@ banner() {
 
 banner "1/7  Environment"
 step "$PY" --version
-step git -C "$ROOT" rev-parse --short HEAD
+# Outside a git checkout (an sdist, a release tarball) there is no commit to show. Say so
+# rather than dying: the demo must run from whatever a reader actually downloaded.
+printf '\n\033[1;36m$ %s\033[0m\n' "git -C $ROOT rev-parse --short HEAD"
+beat
+if git -C "$ROOT" rev-parse --short HEAD 2>/dev/null; then :; else
+  echo "(not a git checkout; no commit to pin)"
+fi
 
 banner "2/7  The frozen task set"
 step "$PY" -c "from assay_bench.catalog import load_catalog; c=load_catalog(); print(f'{len(c)} tasks  v{c.version}  digest {c.digest[:16]}...'); print('Mode B:', len(c.for_mode('B')), ' Mode A:', len(c.for_mode('A')))"
@@ -49,17 +56,17 @@ banner "4/7  Run against the HARDENED conformance target (built to refuse)"
 step "$PY" -m assay_bench run --target hardened --trials 25 --out "$OUT/hardened.json"
 
 banner "5/7  Verify both scorecards, requiring a complete run"
-step "$PY" assay_verifier.py verify "$OUT/vulnerable.json" --require run_complete
-step "$PY" assay_verifier.py verify "$OUT/hardened.json" --require run_complete
+step "$PY" src/assay_verifier.py verify "$OUT/vulnerable.json" --require run_complete
+step "$PY" src/assay_verifier.py verify "$OUT/hardened.json" --require run_complete
 
 banner "6/7  Recompute ONE canary proof triple by hand"
 step "$PY" "$HERE/show_triple.py" "$OUT/vulnerable.json"
 
 banner "7/7  Tamper with a copy, and watch the verifier reject it"
 step "$PY" "$HERE/tamper.py" "$OUT/vulnerable.json" "$OUT/tampered.json"
-printf '\n\033[1;36m$ %s\033[0m\n' "$PY assay_verifier.py verify $OUT/tampered.json"
+printf '\n\033[1;36m$ %s\033[0m\n' "$PY src/assay_verifier.py verify $OUT/tampered.json"
 set +e
-"$PY" assay_verifier.py verify "$OUT/tampered.json"
+"$PY" src/assay_verifier.py verify "$OUT/tampered.json"
 TAMPER_EXIT=$?
 set -e
 printf '\033[1;31mexit status: %s\033[0m\n' "$TAMPER_EXIT"

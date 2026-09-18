@@ -16,6 +16,8 @@ Every row links to a manifest whose canary triples anyone can recompute. The bui
 
 A submitter who holds the run secret can synthesise a passing canary without running anything; that is why `C` is not an attestation and why the Attested column exists. See [SUBMIT.md](SUBMIT.md).
 
+**Complete vs partial.** A row is ranked only if it is a *complete* run: every task in the frozen catalog for its track reported, every task conclusive, no unsupported tasks, no errors or timeouts, and at least the minimum trial count. Partial runs are listed in their own table with no rank and no headline score, showing instead the lower bound that charges every unreported, unsupported or inconclusive task at full weight. Scores use the **frozen catalog's** weight total as the denominator, never the reported findings', so a task cannot take its weight out of the denominator by being left out. The rules are in `assay_bench/validity.py`.
+
 ## Conformance rows (built-in deterministic stubs)
 
 These validate the harness, not a product. They are tabled separately so a stub's 100.0 is never mistaken for a measurement of a real system.

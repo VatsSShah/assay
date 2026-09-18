@@ -8,14 +8,30 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
 FIXTURES = ROOT / "tests" / "fixtures"
 LEGACY = FIXTURES / "legacy_v0_1"
 MANIFESTS = ROOT / "leaderboard" / "manifests"
 
 import assay_verifier as V  # noqa: E402
+
+
+def is_source_checkout() -> bool:
+    """True in a git checkout, false in a tree unpacked from an sdist.
+
+    An sdist deliberately omits git history and the recording binaries, so tests that need
+    either are checkout-only. They skip with a reason rather than failing, which keeps the
+    "does the distribution work?" signal meaningful instead of noisy.
+    """
+    return (ROOT / ".git").exists() and not (ROOT / "PKG-INFO").is_file()
+
+
+def require_source_checkout(case) -> None:
+    if not is_source_checkout():
+        case.skipTest("checkout-only: this tree was unpacked from an sdist")
 
 
 def load(path: Path) -> dict:
@@ -38,11 +54,39 @@ def reseal(manifest: dict) -> dict:
     return manifest
 
 
-def rescore(manifest: dict) -> dict:
-    """Restate the scores so they match the (mutated) findings, then reseal."""
+CATALOG_DOC = load(ROOT / "tasks.json")
+
+
+def rescore(manifest: dict, *, catalog: dict | None = CATALOG_DOC) -> dict:
+    """Restate the scores so they match the (mutated) findings, then reseal.
+
+    Uses the same fixed-catalog denominator the verifier does (validity rule V2), so a test
+    exercising some other rule is not tripped by the score check first. Pass ``catalog=None``
+    to restate over the reported findings instead.
+    """
     findings = manifest["findings"]
-    manifest["agent_resistance_score"] = V._resistance([f for f in findings if f["mode"] == "B"])
-    manifest["server_posture_score"] = V._resistance([f for f in findings if f["mode"] == "A"])
+    if catalog is None:
+        manifest["agent_resistance_score"] = V._resistance(
+            [f for f in findings if f["mode"] == "B"])
+        manifest["server_posture_score"] = V._resistance(
+            [f for f in findings if f["mode"] == "A"])
+    else:
+        manifest["agent_resistance_score"] = V._fixed_denominator_score(catalog, findings, "B")
+        manifest["server_posture_score"] = V._fixed_denominator_score(catalog, findings, "A")
+    if "validity" in manifest:
+        # Keep the lower bound consistent too, or the validity check fires before the rule
+        # under test does.
+        block = manifest["validity"]
+        per_task = block.get("per_task_outcomes") or {}
+        not_conclusive = {tid for tid, tally in per_task.items()
+                          if not any(k in ("resisted", "exploited") for k in (tally or {}))}
+        charged = [f for f in findings if f["id"] not in not_conclusive]
+        if block.get("agent_resistance_lower_bound") is not None:
+            block["agent_resistance_lower_bound"] = V._fixed_denominator_score(
+                catalog, charged, "B", missing_asr=1.0)
+        if block.get("server_posture_lower_bound") is not None:
+            block["server_posture_lower_bound"] = V._fixed_denominator_score(
+                catalog, charged, "A", missing_asr=1.0)
     return reseal(manifest)
 
 

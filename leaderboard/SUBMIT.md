@@ -28,7 +28,7 @@ well-formed envelope. Please do not cite it as more than that, and we will not e
 **1. Register a precommitment, in its own commit, before you run.**
 
 ```bash
-python -m assay_bench precommit --target vulnerable --trials 25 --secret-out /tmp/run.secret
+PYTHONPATH=src python -m assay_bench precommit --target vulnerable --trials 25 --secret-out /tmp/run.secret
 ```
 
 This writes `precommit/registry/<run-id>.json` binding the benchmark version, task-set digest,
@@ -46,7 +46,7 @@ commitment landing in the same commit as the result proves nothing and will be r
 **2. Run the benchmark, reusing the committed run id and secret.**
 
 ```bash
-python -m assay_bench run --target vulnerable --trials 25 --run-id <run-id> --run-secret <hex> --out leaderboard/manifests/<name>.json
+PYTHONPATH=src python -m assay_bench run --target vulnerable --trials 25 --run-id <run-id> --run-secret <hex> --out leaderboard/manifests/<name>.json
 ```
 
 Run on **loopback or in-process only**; published rows never target a live third-party
@@ -55,8 +55,8 @@ endpoint. Pin your model snapshot, temperature and trial count `N` in the manife
 **3. Check it yourself before opening a PR.**
 
 ```bash
-python assay_verifier.py verify leaderboard/manifests/<name>.json --require run_complete
-python -m assay_bench precommit-verify --manifest leaderboard/manifests/<name>.json --require repository_ordering_verified
+python src/assay_verifier.py verify leaderboard/manifests/<name>.json --require run_complete
+PYTHONPATH=src python -m assay_bench precommit-verify --manifest leaderboard/manifests/<name>.json --require repository_ordering_verified
 ```
 
 **4. Open a PR** adding the manifest and one entry to `entries.json` (see `schema.json`). Set

@@ -12,12 +12,12 @@
       "behavioral": 4
     }
   },
-  "code_commit": "675fae7d2d3c6ae9fb97ce3d761492dfb7e35a37",
+  "code_commit": "7aabf424e219f4198e3f6c849a82c685afc9fb39",
   "branch": "claude/vibrant-allen-eem19b",
   "generated_runs": [
     {
       "artifact": "leaderboard/manifests/reference_hardened.json",
-      "sha256": "5bc873b61353fc6805ac0ccc533235cf0e4abd48f92fae90dc33853f654c5818",
+      "sha256": "58cddeed23a63811ec614608974d48ff5863dbe28893cc9a5974801463e266ff",
       "target": "conformance-hardened",
       "target_is_real": false,
       "deterministic_target": true,
@@ -49,7 +49,7 @@
     },
     {
       "artifact": "leaderboard/manifests/reference_mixed.json",
-      "sha256": "c6f4e59d03b4035ee64dcfae35b922998d94320096c900f7bc6156827c9d75f8",
+      "sha256": "3de7253b57b76756711945823849e826e8c4d966147d47ac8219c2ca819957c2",
       "target": "conformance-mixed",
       "target_is_real": false,
       "deterministic_target": true,
@@ -81,7 +81,7 @@
     },
     {
       "artifact": "leaderboard/manifests/reference_vulnerable.json",
-      "sha256": "af5af10961e0635804a3ff65bf32b1f38b04576830b05549d1deab03c7457721",
+      "sha256": "28d6756a8b4ef22b6c0050f10f0db502b15a4022def7086374eef74e44b6244e",
       "target": "conformance-vulnerable",
       "target_is_real": false,
       "deterministic_target": true,
@@ -142,11 +142,10 @@
   ],
   "artifact_hashes": {
     "reference/conformance_matrix.json": "264b4247fbf588677e917a835ced21af88eeaef58cc8754e667df64b656fced1",
-    "tasks.json": "5bb7f398eb738eeeb9eb30b40ad3ca1f2129bae67fe7830bb91eb665a754c925",
-    "COVERAGE.md": "7f4549cb318ddc06d350b9c8349f942ad185fa6c98221998d7c8ce58652358f4",
-    "leaderboard/index.md": "8f8280bbfa6b3737566a8ecbd319a7d79eb5645393cdf7eb3b48fcc85f303599",
-    "demo/recording/assay-demo.webm": "6e86bc078ec9879c55a20701ac78744f66051b5c4bf72b74ab072d22dbaa759c",
-    "demo/recording/validation.json": "f368db665c96726f55471c6979b06eb35cfb7aacd0e0a586e625973981cfa0e6"
+    "tasks.json": "3f7bd63c5a2940807548624a68a9e3f2ad89069a35296b75231767b898ea4342",
+    "COVERAGE.md": "0470910318cdf308801b4888e7f176301e07eb54b846e5bd8c5f65597c1bd260",
+    "leaderboard/index.md": "8a1ae6235d6b3045e6a9732f9557f3bb1d7e84c30a37441c5310ddc01b86ab5e",
+    "demo/recording/validation.json": "a780590fb689a7deda7308f9577e6ca0061f6a3ac0c9f1681ef7cbedde884945"
   },
   "caveat": "Every generated run above used a built-in DETERMINISTIC conformance target. target_is_real is false for all of them. None is a measurement of any real MCP server, agent or model."
 }

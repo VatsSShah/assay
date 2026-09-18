@@ -1,0 +1,18 @@
+# Source distribution contents. The sdist must carry everything needed to run the benchmark and
+# reproduce the shipped artifacts, not just the importable modules.
+include LICENSE NOTICE README.md SPEC.md TASKS.md COVERAGE.md CONTRIBUTING.md
+include CHANGELOG.md SECURITY.md REMAINING_GAPS.md IMPLEMENTATION_SUMMARY.md
+include tasks.json manifest_schema.json
+include coverage.py
+recursive-include src/assay_bench/data *.json
+recursive-include leaderboard *.json *.md *.py
+recursive-include reference *.json
+recursive-include tests *.py *.json
+recursive-include audit *.md *.json *.py
+recursive-include demo *.sh *.py *.md *.html *.mjs
+recursive-include corpus *.md
+recursive-include precommit *.md
+recursive-include attest *.md
+prune demo/out
+prune demo/recording/frames
+global-exclude *.pyc __pycache__ *.webm *.mp4

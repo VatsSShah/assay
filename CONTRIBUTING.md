@@ -9,12 +9,12 @@ against `unittest` rather than pytest so that claim stays true.
 
 ```bash
 python -m unittest discover -s tests -t .
-python -m assay_bench run --target vulnerable --trials 5 --out /tmp/scorecard.json
-python assay_verifier.py verify /tmp/scorecard.json --require run_complete
+PYTHONPATH=src python -m assay_bench run --target vulnerable --trials 5 --out /tmp/scorecard.json
+python src/assay_verifier.py verify /tmp/scorecard.json --require run_complete
 python coverage.py
 python leaderboard/build_site.py
-python -m assay_bench reference --check
-python -m assay_bench.sync_data --check
+PYTHONPATH=src python -m assay_bench reference --check
+PYTHONPATH=src python -m assay_bench.sync_data --check
 ```
 
 `python -m pytest tests/ -q` also works if you prefer pytest — it collects `unittest.TestCase`

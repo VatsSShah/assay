@@ -2,11 +2,15 @@ name: assay
 
 on: [push, pull_request]
 
+env:
+  PYTHONPATH: src
+
 jobs:
-  # The core job installs nothing. If this ever needs a third-party package, the
-  # "standard library alone" claim in README and CONTRIBUTING is no longer true.
+  # ---------------------------------------------------------------- core, no installs
+  # This job installs NOTHING. If it ever needs a third-party package, the "standard library
+  # alone" claim in README and CONTRIBUTING has stopped being true and should be withdrawn.
   stdlib:
-    name: stdlib only (py${{ matrix.python }})
+    name: tests, stdlib only (py${{ matrix.python }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -20,23 +24,23 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Test suite (unittest, no third-party runner)
+      - name: Full suite
         run: python -m unittest discover -s tests -t . -v
 
       - name: Verify every shipped manifest reaches every level
         run: |
           for m in leaderboard/manifests/*.json; do
             echo "== $m"
-            python assay_verifier.py verify "$m" --require run_complete
+            python src/assay_verifier.py verify "$m" --require run_complete
           done
 
       - name: Legacy v0.1 manifests must still verify
         run: |
           for m in tests/fixtures/legacy_v0_1/reference_*.json; do
-            python assay_verifier.py verify "$m" --require internally_consistent
+            python src/assay_verifier.py verify "$m" --require internally_consistent
           done
 
-      - name: Tampering must be rejected with a stable non-zero exit
+      - name: Tampering is rejected with a stable non-zero exit
         run: |
           python - <<'PY'
           import json, pathlib
@@ -44,19 +48,75 @@ jobs:
           next(f for f in m["findings"] if "canary" in f)["canary"]["observed"] = "TAMPERED"
           pathlib.Path("/tmp/tampered.json").write_text(json.dumps(m))
           PY
-          if python assay_verifier.py verify /tmp/tampered.json; then
-            echo "::error::a tampered manifest verified"; exit 1
-          fi
-          python assay_verifier.py verify /tmp/tampered.json; test $? -eq 1
+          python src/assay_verifier.py verify /tmp/tampered.json && { echo "::error::a tampered manifest verified"; exit 1; }
+          python src/assay_verifier.py verify /tmp/tampered.json; test $? -eq 1
 
       - name: Assertions disabled must not weaken any check
         run: |
-          if python -O assay_verifier.py verify /tmp/tampered.json; then
-            echo "::error::python -O turned a rejection into an acceptance"; exit 1
-          fi
+          python -O src/assay_verifier.py verify /tmp/tampered.json && { echo "::error::python -O turned a rejection into an acceptance"; exit 1; }
+          true
 
+      - name: A partial run must not reach run_complete
+        run: |
+          python -m assay_bench run --target vulnerable --trials 5 --task M1 --task M2 --out /tmp/partial.json
+          python src/assay_verifier.py verify /tmp/partial.json --require run_complete && { echo "::error::a partial run reached run_complete"; exit 1; }
+          true
+
+  # ------------------------------------------------------------------ the benchmark runs
+  benchmark:
+    name: all 31 conformance tasks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run every task against all three conformance targets
+        run: |
+          for t in vulnerable hardened mixed; do
+            python -m assay_bench run --target "$t" --trials 25 \
+              --out "/tmp/$t.json" --trials-out "/tmp/$t-trials.json"
+            python src/assay_verifier.py verify "/tmp/$t.json" --require run_complete
+          done
+
+      - name: Recall, specificity and discrimination must all hold
+        run: |
+          python - <<'PY'
+          import json, sys
+          v = json.load(open("/tmp/vulnerable.json"))
+          h = json.load(open("/tmp/hardened.json"))
+          m = json.load(open("/tmp/mixed.json"))
+          sys.path.insert(0, "src")
+          from assay_bench.adapters.conformance import MIXED_SUSCEPTIBLE
+          problems = []
+          if not all(f["fired"] for f in v["findings"]):
+              problems.append("recall: some attack did not fire on the vulnerable target")
+          if any(f["fired"] for f in h["findings"]):
+              problems.append("specificity: something fired on the hardened control")
+          if {f["id"] for f in m["findings"] if f["fired"]} != set(MIXED_SUSCEPTIBLE):
+              problems.append("discrimination: mixed did not match its published subset")
+          for name, doc in (("vulnerable", v), ("hardened", h), ("mixed", m)):
+              if doc["validity"]["assessment"]["completion"] != "complete":
+                  problems.append(f"{name}: run was not complete")
+          if problems:
+              print("\n".join(f"::error::{p}" for p in problems)); raise SystemExit(1)
+          print("recall, specificity, discrimination and completeness all hold")
+          PY
+
+      - name: Raw trial records must exist for every task
+        run: |
+          python - <<'PY'
+          import json
+          t = json.load(open("/tmp/mixed-trials.json"))
+          assert len(t["tasks"]) == 31, t["tasks"].keys()
+          assert all(len(v) == 25 for v in t["tasks"].values())
+          print(f"{sum(len(v) for v in t['tasks'].values())} raw trial records")
+          PY
+
+  # ----------------------------------------------------------- generated files are current
   generated:
-    name: generated files are current
+    name: no stale generated files
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -70,6 +130,7 @@ jobs:
           python coverage.py
           python leaderboard/build_site.py
           python -m assay_bench reference
+          python audit/collect_evidence.py
 
       - name: Fail if any generated file is stale
         run: git diff --exit-code
@@ -77,21 +138,42 @@ jobs:
       - name: Reference invariants survive a fresh run
         run: python -m assay_bench reference --check
 
+  # ------------------------------------------------------------------------- distribution
   packaging:
-    name: wheel builds, installs, and runs from outside the checkout
+    name: wheel + sdist, installed and run from outside the checkout
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python }}
 
-      - name: Build the wheel
+      - name: Build wheel and sdist
         run: |
-          python -m pip install --quiet build
-          python -m build --wheel
+          python -m pip install --quiet build twine
+          python -m build
 
-      - name: Install it into a clean virtualenv
+      - name: Metadata must pass twine's checks
+        run: python -m twine check --strict dist/*
+
+      - name: The distribution must not carry recordings
+        run: |
+          if find dist -name '*.whl' -o -name '*.tar.gz' | xargs -I{} sh -c 'python - "$1" <<PY
+          import sys, tarfile, zipfile
+          p = sys.argv[1]
+          names = (zipfile.ZipFile(p).namelist() if p.endswith(".whl")
+                   else tarfile.open(p).getnames())
+          bad = [n for n in names if n.endswith((".webm", ".mp4", ".jpg"))]
+          print("\n".join(bad))
+          PY' _ {} | grep .; then
+            echo "::error::a distribution contains recording binaries"; exit 1
+          fi
+
+      - name: Install the wheel into a clean virtualenv
         run: |
           python -m venv /tmp/venv
           /tmp/venv/bin/pip install --quiet dist/*.whl
@@ -99,21 +181,56 @@ jobs:
       - name: Smoke-test the CLIs from a directory that is not the checkout
         run: |
           cd /tmp
+          unset PYTHONPATH
           /tmp/venv/bin/assay --help
+          /tmp/venv/bin/assay --version
           /tmp/venv/bin/assay-bench --help
           /tmp/venv/bin/assay levels
           /tmp/venv/bin/assay run --target vulnerable --trials 5 --out /tmp/sc.json
           /tmp/venv/bin/assay verify /tmp/sc.json --require run_complete
+          /tmp/venv/bin/assay run --target hardened --trials 5 --out /tmp/sc2.json
+          /tmp/venv/bin/assay verify /tmp/sc2.json --require run_complete
 
-      - name: The packaged task set must match the canonical one
+      - name: The installed package must carry its own resources
         run: |
-          /tmp/venv/bin/python -c "
-          import json, pathlib, assay_bench.catalog as c
+          cd /tmp
+          unset PYTHONPATH
+          /tmp/venv/bin/python - <<'PY'
+          import json
+          from importlib.resources import files
+          import assay_bench.catalog as c
           cat = c.load_catalog()
-          print('tasks', len(cat), 'digest', cat.digest)
-          assert len(cat) == 31
-          "
+          assert len(cat) == 31, len(cat)
+          data = files("assay_bench") / "data"
+          assert (data / "tasks.json").is_file()
+          assert (data / "manifest_schema.json").is_file()
+          print("catalog", len(cat), "digest", cat.digest[:16])
+          PY
 
+      - name: An sdist must rebuild and pass its own tests
+        run: |
+          mkdir -p /tmp/fromsdist && tar xzf dist/*.tar.gz -C /tmp/fromsdist --strip-components=1
+          cd /tmp/fromsdist
+          PYTHONPATH=src python -m unittest discover -s tests -t . -q
+
+  # --------------------------------------------------------------- documentation is runnable
+  docs:
+    name: every documented command runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Executable documentation
+        run: python -m unittest tests.test_artifacts_and_docs -v
+      - name: The demo runs from reset
+        run: |
+          bash demo/reset.sh
+          bash demo/run_demo.sh
+          bash demo/reset.sh
+
+  # ---------------------------------------------------------------------- optional extras
   optional-pytest:
     name: pytest also collects the suite (optional)
     runs-on: ubuntu-latest

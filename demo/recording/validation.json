@@ -4,20 +4,20 @@
   "all_frames_distinct": true,
   "frozen_adjacent_pairs": 0,
   "longest_frozen_run_samples": 0,
-  "pairs_with_visible_change": 30,
-  "fraction_of_pairs_changing": 1.0,
-  "mean_signature_distance": 0.06114,
-  "median_signature_distance": 0.04008,
-  "min_signature_distance": 0.001524,
-  "max_signature_distance": 0.206761,
-  "mean_distance_first_half": 0.069397,
-  "mean_distance_second_half": 0.052883,
+  "pairs_with_visible_change": 29,
+  "fraction_of_pairs_changing": 0.9667,
+  "mean_signature_distance": 0.063909,
+  "median_signature_distance": 0.045609,
+  "min_signature_distance": 0.000501,
+  "max_signature_distance": 0.267535,
+  "mean_distance_first_half": 0.070595,
+  "mean_distance_second_half": 0.057223,
   "change_is_spread_across_timeline": true,
   "samples": [
     {
       "frame": "frame-00000.jpg",
-      "bytes": 40567,
-      "sha256": "8855281c1eaa9f56283edc32397c7a1d0848b3c75387e2035346b1397b6e132a"
+      "bytes": 37326,
+      "sha256": "d01b94d5e5de02aa60098b79265e3f66d24cb725eaa0943efaf8cdc6db1c79bc"
     },
     {
       "frame": "frame-00007.jpg",
@@ -31,8 +31,8 @@
     },
     {
       "frame": "frame-00021.jpg",
-      "bytes": 43400,
-      "sha256": "856cd04643dd90a3e6add7cb4bda80b735cea889b1130888a3acce825b3bca47"
+      "bytes": 43106,
+      "sha256": "a7dfbdffffb8c1d89e2930b3cb0cb93574f9b393d0c6c337137a0ac101167e3c"
     },
     {
       "frame": "frame-00028.jpg",
@@ -41,142 +41,142 @@
     },
     {
       "frame": "frame-00035.jpg",
-      "bytes": 57742,
-      "sha256": "5d201399fae6408e22df1e2844ec50277f4535da012a9378e8aede025c106c36"
+      "bytes": 57796,
+      "sha256": "1dc5ae9d0d7b27309bcafbb902c63df906bfba4cc3ddb77e10e0bbbeca0d1755"
     },
     {
       "frame": "frame-00042.jpg",
-      "bytes": 57471,
-      "sha256": "6cd84e452f8cd80abb51d6daaa5f697789d9d8af85626316d2142757b58d933b"
+      "bytes": 57487,
+      "sha256": "3ba7cf962df983bb93505da9032cd87da1a7be0d66ec9d770d6e867c164dadd2"
     },
     {
       "frame": "frame-00049.jpg",
-      "bytes": 85429,
-      "sha256": "a50af1c52d3de57d51f2f44d023a14c5e6e7fabcc42362aceee8001f0e9cf80a"
+      "bytes": 85473,
+      "sha256": "617862e08ab45e35dbbf0592330da74851acf4e00cf5a4d1c49a23b56e65e305"
     },
     {
       "frame": "frame-00056.jpg",
-      "bytes": 105543,
-      "sha256": "9f14653898a2f6e9ed4bf6da0511e8597dd6732eb6934257a60013d4838040fd"
+      "bytes": 105549,
+      "sha256": "96a55816164f575c759a7ed2487089c436d02476892ef5d0376b6926d1775ffe"
     },
     {
       "frame": "frame-00063.jpg",
-      "bytes": 105259,
-      "sha256": "f2fbfa19ddb96d84318de7db1e7f2faca2304f958078730179282ff0974bfef5"
+      "bytes": 105227,
+      "sha256": "e574ed6f9aa9e3318929f4d297faed2f41561ad3b02a0e8ccdc600d96d1fcac1"
     },
     {
       "frame": "frame-00070.jpg",
-      "bytes": 119355,
-      "sha256": "70183cfed0dfa1657329854e134552bbe253b3a89e3f6bfb92ca2c2baa2aee4a"
+      "bytes": 119379,
+      "sha256": "18e4addc4587e87c579eabcf1c223b4e638d29d3ec4992a8796de62499d0f105"
     },
     {
       "frame": "frame-00077.jpg",
-      "bytes": 148037,
-      "sha256": "85677d98949e7da8fb1d4a4e409978042ca859ffd7e74afdb30b2dfeaec41280"
+      "bytes": 148058,
+      "sha256": "b2ca3e8f16d7c48b20dd16a70ed8f8dc71459b00db79f537be54a77bdfe8e04f"
     },
     {
       "frame": "frame-00084.jpg",
-      "bytes": 147725,
-      "sha256": "69b9a5090f47b45387ded51452e6912bc0efed497841ccee881f971b44c43302"
+      "bytes": 147667,
+      "sha256": "18a1ecfecd09d0fa2f00000ddd07346d23fa6002a9c34838ac8209a924d6a0bf"
     },
     {
       "frame": "frame-00091.jpg",
-      "bytes": 162475,
-      "sha256": "da37bdc24791bf53163c0452b8ac417fabe7b7fe75cb9aa48cad8b644c0a1b43"
+      "bytes": 162504,
+      "sha256": "317da5aa0f263e64cb4460f63ef8efb5333516a0c326d240484b1e979f0a6c2d"
     },
     {
       "frame": "frame-00098.jpg",
-      "bytes": 162326,
-      "sha256": "9cfc1d2db02cb4bea19f2ff10385effc3be1bdc2d943377e0fc6b115f7698f3c"
+      "bytes": 162558,
+      "sha256": "e590308015292e7b817edb96bfdfc82de2b2335a8fb46e7d9259a456e8f136c6"
     },
     {
       "frame": "frame-00105.jpg",
-      "bytes": 185674,
-      "sha256": "4afd4400ef6e76357377e433e09927229f5acfbc71afac6639f61b7556b8a8ec"
+      "bytes": 185447,
+      "sha256": "7f2b7999114629ecd02dfe94c864ad71007dd32dc2a341242113e91805c3326c"
     },
     {
       "frame": "frame-00112.jpg",
-      "bytes": 199374,
-      "sha256": "5bcb3a50d7b8ae87ec0ce96108a7966821144a5f8afff06a71eee7c0909d6237"
+      "bytes": 200017,
+      "sha256": "d1ea822815843315f1348073ad3e62e65b85f8fc382adf0833f687724adc1e2f"
     },
     {
       "frame": "frame-00119.jpg",
-      "bytes": 199095,
-      "sha256": "a2935a2da52f21214af2e729dc5bcd93bfc790dd39acf0e7e3915149c9c795ba"
+      "bytes": 199744,
+      "sha256": "cf763ab4c66080f966ac48e22562bef7dd4e6bf5febd5311c498396fceb70140"
     },
     {
       "frame": "frame-00126.jpg",
-      "bytes": 157720,
-      "sha256": "97d23dbaec76d926be8faf0667b3adcc8fdc66ca150a9fb9bd17dcd979011897"
+      "bytes": 129312,
+      "sha256": "664f32e5272a0594ffcf8fa451571e4eaf7048e1f62e590de0e1e3857608ade1"
     },
     {
       "frame": "frame-00133.jpg",
-      "bytes": 157707,
-      "sha256": "a253a70e4495e40c0d91ab073ac1d17381015fa39aab5f48b50dad5cf5827a7d"
+      "bytes": 129317,
+      "sha256": "c3b15023ce447bf30671827d8597bfa86286f8c3b3eabdf2a9418ca491da18f2"
     },
     {
       "frame": "frame-00140.jpg",
-      "bytes": 128811,
-      "sha256": "499f6a7414eb6e7f49a181ce4ebe4954255d05af045025e27bafc627ebb188e6"
+      "bytes": 121682,
+      "sha256": "c2d7bd0674613fc08c53bb15f92a3b09a8103270d67cab112ffa254365bb1f23"
     },
     {
       "frame": "frame-00147.jpg",
-      "bytes": 132657,
-      "sha256": "9e15881c4f38fc9acdea29510664b85ad245c42655510bd748602b02241d24fa"
+      "bytes": 133242,
+      "sha256": "82d432046ea096797763725773a95d29a765522e00bde4e164df4c5d8bad4c53"
     },
     {
       "frame": "frame-00154.jpg",
-      "bytes": 132413,
-      "sha256": "35361b0916a8162777a9bc8c194d05b75b7150304b2d71691aa316484a7423cd"
+      "bytes": 132977,
+      "sha256": "b26158e13902729e7e6efe78c2d2cf3daf8085c2ef178fddbee922a2b152ef74"
     },
     {
       "frame": "frame-00161.jpg",
-      "bytes": 177146,
-      "sha256": "00db6decfa772069f3ca30c56261f431e6e33460b606e78e6bc9c867af0dea08"
+      "bytes": 178328,
+      "sha256": "abb04406a3f59b9470adcbb0019ff6f4389d8869f7bc61d8688e74a33ec64ec9"
     },
     {
       "frame": "frame-00168.jpg",
-      "bytes": 191443,
-      "sha256": "469ab446c35439435c166f362f57d5ab6ef1bc6fffec05d2c6ac708b9bbd3d91"
+      "bytes": 194911,
+      "sha256": "12959cace4d6d738d75d90fcac1e4700a5f1300dbc705c197ec5319ee0f5e5b9"
     },
     {
       "frame": "frame-00175.jpg",
-      "bytes": 191156,
-      "sha256": "433f1e9bde5336ba5adb16b0e4082c90114e0bedf6efa91a168ea54925ec81ef"
+      "bytes": 194672,
+      "sha256": "10863c872e45d1b9c84ab7be7baae96d9139000d99a0d8cf525e63934a31b29e"
     },
     {
       "frame": "frame-00182.jpg",
-      "bytes": 223309,
-      "sha256": "6b13b657162ae0652713abcf1a3a0bc6e3da12a52820bcb93a89bf49cfb0b212"
+      "bytes": 228256,
+      "sha256": "424b8e938d2427991785f55245087bacc6d9386f24419e95adbb75515787feeb"
     },
     {
       "frame": "frame-00189.jpg",
-      "bytes": 223309,
-      "sha256": "c35a3bcd4c3407aa6fd016ef5a5505765f302c492b736b912f8b150c643f1bfc"
+      "bytes": 228258,
+      "sha256": "5d16f682b0031d7c1b6020869ff5938edc6aa89c445cd847dbb296afe92d62f1"
     },
     {
       "frame": "frame-00196.jpg",
-      "bytes": 233590,
-      "sha256": "b1c20597d32ccad9fbd6b63023ea3ba3a30f08efad948d1f19af7ce8220e0570"
+      "bytes": 230781,
+      "sha256": "104b9e04d1a364269f3dcec98060957357e5be8d8e4ef8a0f839e9bc2e443686"
     },
     {
       "frame": "frame-00203.jpg",
-      "bytes": 233846,
-      "sha256": "0dc57dc61f9a9fe69e2a86595c10df90014e0a6228b569b5bac7ff7e41c408e0"
+      "bytes": 231043,
+      "sha256": "0f091612b706900643b7aaec8d44900049ece3aa5ef021c15fe49d8dbc3dec86"
     },
     {
       "frame": "frame-00210.jpg",
-      "bytes": 233574,
-      "sha256": "e1482fe00e59d6f52219ae1bb28af73dcd2e6da9b7d5888e523cc7fd198c7afe"
+      "bytes": 231027,
+      "sha256": "d4361e6527f92470df78d5d39250545ec5995fdb5665a6a759ac1f49d8aa1bf3"
     }
   ],
   "adjacent_pairs": [
     {
       "from": "frame-00000.jpg",
       "to": "frame-00007.jpg",
-      "bytes_delta": -302,
+      "bytes_delta": 2939,
       "identical_bytes": false,
-      "signature_distance": 0.041185
+      "signature_distance": 0.055154
     },
     {
       "from": "frame-00007.jpg",
@@ -188,204 +188,204 @@
     {
       "from": "frame-00014.jpg",
       "to": "frame-00021.jpg",
-      "bytes_delta": 8,
+      "bytes_delta": -286,
       "identical_bytes": false,
-      "signature_distance": 0.03365
+      "signature_distance": 0.043425
     },
     {
       "from": "frame-00021.jpg",
       "to": "frame-00028.jpg",
-      "bytes_delta": 8246,
+      "bytes_delta": 8540,
       "identical_bytes": false,
-      "signature_distance": 0.098635
+      "signature_distance": 0.096525
     },
     {
       "from": "frame-00028.jpg",
       "to": "frame-00035.jpg",
-      "bytes_delta": 6096,
+      "bytes_delta": 6150,
       "identical_bytes": false,
-      "signature_distance": 0.070798
+      "signature_distance": 0.064451
     },
     {
       "from": "frame-00035.jpg",
       "to": "frame-00042.jpg",
-      "bytes_delta": -271,
+      "bytes_delta": -309,
       "identical_bytes": false,
-      "signature_distance": 0.036512
+      "signature_distance": 0.040435
     },
     {
       "from": "frame-00042.jpg",
       "to": "frame-00049.jpg",
-      "bytes_delta": 27958,
+      "bytes_delta": 27986,
       "identical_bytes": false,
-      "signature_distance": 0.198309
+      "signature_distance": 0.198632
     },
     {
       "from": "frame-00049.jpg",
       "to": "frame-00056.jpg",
-      "bytes_delta": 20114,
+      "bytes_delta": 20076,
       "identical_bytes": false,
-      "signature_distance": 0.108909
+      "signature_distance": 0.109252
     },
     {
       "from": "frame-00056.jpg",
       "to": "frame-00063.jpg",
-      "bytes_delta": -284,
+      "bytes_delta": -322,
       "identical_bytes": false,
-      "signature_distance": 0.013431
+      "signature_distance": 0.02434
     },
     {
       "from": "frame-00063.jpg",
       "to": "frame-00070.jpg",
-      "bytes_delta": 14096,
+      "bytes_delta": 14152,
       "identical_bytes": false,
-      "signature_distance": 0.073973
+      "signature_distance": 0.072926
     },
     {
       "from": "frame-00070.jpg",
       "to": "frame-00077.jpg",
-      "bytes_delta": 28682,
+      "bytes_delta": 28679,
       "identical_bytes": false,
-      "signature_distance": 0.110464
+      "signature_distance": 0.111722
     },
     {
       "from": "frame-00077.jpg",
       "to": "frame-00084.jpg",
-      "bytes_delta": -312,
+      "bytes_delta": -391,
       "identical_bytes": false,
-      "signature_distance": 0.013407
+      "signature_distance": 0.013732
     },
     {
       "from": "frame-00084.jpg",
       "to": "frame-00091.jpg",
-      "bytes_delta": 14750,
+      "bytes_delta": 14837,
       "identical_bytes": false,
-      "signature_distance": 0.048882
+      "signature_distance": 0.049124
     },
     {
       "from": "frame-00091.jpg",
       "to": "frame-00098.jpg",
-      "bytes_delta": -149,
+      "bytes_delta": 54,
       "identical_bytes": false,
-      "signature_distance": 0.012577
+      "signature_distance": 0.000501
     },
     {
       "from": "frame-00098.jpg",
       "to": "frame-00105.jpg",
-      "bytes_delta": 23348,
+      "bytes_delta": 22889,
       "identical_bytes": false,
-      "signature_distance": 0.14125
+      "signature_distance": 0.139729
     },
     {
       "from": "frame-00105.jpg",
       "to": "frame-00112.jpg",
-      "bytes_delta": 13700,
+      "bytes_delta": 14570,
       "identical_bytes": false,
-      "signature_distance": 0.049638
+      "signature_distance": 0.052435
     },
     {
       "from": "frame-00112.jpg",
       "to": "frame-00119.jpg",
-      "bytes_delta": -279,
+      "bytes_delta": -273,
       "identical_bytes": false,
-      "signature_distance": 0.026752
+      "signature_distance": 0.021273
     },
     {
       "from": "frame-00119.jpg",
       "to": "frame-00126.jpg",
-      "bytes_delta": -41375,
+      "bytes_delta": -70432,
       "identical_bytes": false,
-      "signature_distance": 0.180873
+      "signature_distance": 0.267535
     },
     {
       "from": "frame-00126.jpg",
       "to": "frame-00133.jpg",
-      "bytes_delta": -13,
+      "bytes_delta": 5,
       "identical_bytes": false,
-      "signature_distance": 0.001827
+      "signature_distance": 0.010779
     },
     {
       "from": "frame-00133.jpg",
       "to": "frame-00140.jpg",
-      "bytes_delta": -28896,
+      "bytes_delta": -7635,
       "identical_bytes": false,
-      "signature_distance": 0.101429
+      "signature_distance": 0.034164
     },
     {
       "from": "frame-00140.jpg",
       "to": "frame-00147.jpg",
-      "bytes_delta": 3846,
+      "bytes_delta": 11560,
       "identical_bytes": false,
-      "signature_distance": 0.020136
+      "signature_distance": 0.047794
     },
     {
       "from": "frame-00147.jpg",
       "to": "frame-00154.jpg",
-      "bytes_delta": -244,
+      "bytes_delta": -265,
       "identical_bytes": false,
-      "signature_distance": 0.014658
+      "signature_distance": 0.010473
     },
     {
       "from": "frame-00154.jpg",
       "to": "frame-00161.jpg",
-      "bytes_delta": 44733,
+      "bytes_delta": 45351,
       "identical_bytes": false,
-      "signature_distance": 0.206761
+      "signature_distance": 0.209033
     },
     {
       "from": "frame-00161.jpg",
       "to": "frame-00168.jpg",
-      "bytes_delta": 14297,
+      "bytes_delta": 16583,
       "identical_bytes": false,
-      "signature_distance": 0.043795
+      "signature_distance": 0.048784
     },
     {
       "from": "frame-00168.jpg",
       "to": "frame-00175.jpg",
-      "bytes_delta": -287,
+      "bytes_delta": -239,
       "identical_bytes": false,
-      "signature_distance": 0.013065
+      "signature_distance": 0.014475
     },
     {
       "from": "frame-00175.jpg",
       "to": "frame-00182.jpg",
-      "bytes_delta": 32153,
+      "bytes_delta": 33584,
       "identical_bytes": false,
-      "signature_distance": 0.079141
+      "signature_distance": 0.087789
     },
     {
       "from": "frame-00182.jpg",
       "to": "frame-00189.jpg",
-      "bytes_delta": 0,
+      "bytes_delta": 2,
       "identical_bytes": false,
-      "signature_distance": 0.001524
+      "signature_distance": 0.002419
     },
     {
       "from": "frame-00189.jpg",
       "to": "frame-00196.jpg",
-      "bytes_delta": 10281,
+      "bytes_delta": 2523,
       "identical_bytes": false,
-      "signature_distance": 0.029601
+      "signature_distance": 0.028662
     },
     {
       "from": "frame-00196.jpg",
       "to": "frame-00203.jpg",
-      "bytes_delta": 256,
+      "bytes_delta": 262,
       "identical_bytes": false,
-      "signature_distance": 0.011673
+      "signature_distance": 0.020249
     },
     {
       "from": "frame-00203.jpg",
       "to": "frame-00210.jpg",
-      "bytes_delta": -272,
+      "bytes_delta": -16,
       "identical_bytes": false,
-      "signature_distance": 0.012369
+      "signature_distance": 0.002477
     }
   ],
   "video": {
     "path": "demo/recording/assay-demo.webm",
-    "bytes": 3369398,
-    "sha256": "6e86bc078ec9879c55a20701ac78744f66051b5c4bf72b74ab072d22dbaa759c",
+    "bytes": 3236663,
+    "sha256": "2e8764bc3507ec0335c6fab24296d36baea09603efeec3516b51b2d7ac93abc7",
     "container": "WebM (VP8)"
   },
   "gate": {

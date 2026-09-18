@@ -58,9 +58,9 @@ form. A manifest that differs on any of them cannot claim the record. A record m
 ## Commands
 
 ```bash
-python -m assay_bench precommit --target vulnerable --trials 25 --secret-out /tmp/run.secret
-python -m assay_bench precommit-list
-python -m assay_bench precommit-verify --manifest leaderboard/manifests/reference_vulnerable.json
+PYTHONPATH=src python -m assay_bench precommit --target vulnerable --trials 25 --secret-out /tmp/run.secret
+PYTHONPATH=src python -m assay_bench precommit-list
+PYTHONPATH=src python -m assay_bench precommit-verify --manifest leaderboard/manifests/reference_vulnerable.json
 ```
 
 Every case above is covered by `tests/test_precommit.py`, which builds throwaway git
