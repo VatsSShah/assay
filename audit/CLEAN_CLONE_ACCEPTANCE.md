@@ -4,7 +4,7 @@ Every gate below was executed against a **fresh clone**, not the working tree. C
 codes and counts are as observed. Where a gate cannot pass, it says so and points at the
 corresponding entry in [`REMAINING_GAPS.md`](../REMAINING_GAPS.md) rather than being weakened.
 
-Reproduce with:
+Run against commit `a8afcca`. Reproduce with:
 
 ```bash
 git clone https://github.com/VatsSShah/assay /tmp/assay && cd /tmp/assay
@@ -37,7 +37,7 @@ The core suite deliberately installs nothing. Building a wheel needs `setuptools
 | 6 | Safe/vulnerable conformance runs generate artifacts through documented commands | **pass** — `assay reference` regenerates byte-identically; `--check` compares invariants |
 | 7 | Generated artifacts and docs clean under `git diff --exit-code` | **pass** |
 | 8 | Controlled tampering rejected with a stable non-zero exit | **pass** — exit 1, and still exit 1 under `python -O` |
-| 9 | Partial runs cannot masquerade as complete | **pass** — see below |
+| 9 | Partial runs cannot masquerade as complete | **pass** — a 2-of-31 run reports an apparent 92.5 and a **lower bound of 0.0**; `--require run_complete` exits 1 |
 | 10 | Precommitment temporally enforced and tested, or claims removed | **pass** — three levels with named authorities, 24 tests over real git repos; "kills cherry-picking" withdrawn and banned by test |
 | 11 | Attestation status distinct from internal verification | **pass** — `attest/`, its own leaderboard column, never emitted by the verifier |
 | 12 | All executable documentation snippets tested | **pass** — every fenced command extracted and run; 5 excused with stated reasons |
@@ -83,10 +83,19 @@ repository root, because discovery starts in the current directory. That is a pr
 
 ## Gate 4 — distribution
 
+Built and installed from the clean clone, then driven from `/tmp` with `PYTHONPATH` unset:
+
 ```
-$ python -m venv /tmp/bv && /tmp/bv/bin/python -c "...build_wheel(...); ...build_sdist(...)"
 build_wheel rc 0
 build_sdist rc 0
+$ /tmp/cc_venv/bin/assay --version
+assay-bench 0.2.0
+$ /tmp/cc_venv/bin/assay run --target vulnerable --trials 5 --out /tmp/cc.json
+wrote /tmp/cc.json: 31/31 tasks, agent=0.0 server=0.0 completion=complete real_target=False
+$ /tmp/cc_venv/bin/assay verify /tmp/cc.json --require run_complete
+exit 0
+$ /tmp/cc_venv/bin/python -c "from assay_bench.catalog import load_catalog; ..."
+installed catalog: 31 tasks, digest e8a6e47520e38b0e
 ```
 
 The wheel carries `assay_verifier.py`, `scoring.py`, `badge.py`, the whole `assay_bench` package,
@@ -136,10 +145,19 @@ them all and the same tampered file verified with **exit 0**.
 ## Gate 9 — partial runs
 
 ```
-$ python -m assay_bench run --target vulnerable --trials 5 --task M1 --task M2 --out partial.json
+$ PYTHONPATH=src python -m assay_bench run --target vulnerable --trials 5 \
+      --task M1 --task M2 --out partial.json
 $ python src/assay_verifier.py verify partial.json --require run_complete
 exit 1
+
+completion : partial
+score      : 92.5      <- what reporting 2 of 31 tasks looks like
+lower bound: 0.0       <- what it is worth
+explanation: partial: 26 required task(s) not reported
 ```
+
+The two numbers are the point. Cherry-picking two tasks produces a flattering headline and a
+lower bound of zero, and only the lower bound is citable for a partial run.
 
 Four independent mechanisms, each tested:
 
