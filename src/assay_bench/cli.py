@@ -28,6 +28,22 @@ def _write(path: Path, doc: Any) -> None:
     path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
 
 
+def _read_json(path: str, what: str) -> Any:
+    """Read a JSON file, reporting a missing or malformed one as input trouble (exit 3) rather
+    than as an unhandled traceback. A CLI that tracebacks on a typo is a CLI people stop trusting
+    to tell them anything useful."""
+    from .errors import MalformedInput
+
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+    except OSError as exc:
+        raise MalformedInput(f"cannot read {what} {path!r}: {exc.strerror}") from None
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise MalformedInput(f"{what} {path!r} is not valid JSON: {exc}") from None
+
+
 # ------------------------------------------------------------------------------ run
 
 def cmd_run(args) -> int:
@@ -194,12 +210,12 @@ def cmd_reference(args) -> int:
             if not committed_path.is_file():
                 problems.append(f"{committed_path}: missing")
                 continue
-            committed = json.loads(committed_path.read_text(encoding="utf-8"))
+            committed = _read_json(str(committed_path), "committed reference manifest")
             if _invariants(committed) != _invariants(runs[target]):
                 problems.append(f"{committed_path}: run invariants differ from a fresh run")
         matrix_path = Path(args.matrix)
         if matrix_path.is_file():
-            old = json.loads(matrix_path.read_text(encoding="utf-8"))
+            old = _read_json(str(matrix_path), "conformance matrix")
             if old.get("rows") != matrix["rows"] or old.get("summary") != matrix["summary"]:
                 problems.append(f"{matrix_path}: conformance rows differ from a fresh run")
         else:
@@ -256,8 +272,8 @@ def cmd_precommit(args) -> int:
 def cmd_precommit_verify(args) -> int:
     from .precommit import verify
 
-    manifest = json.loads(Path(args.manifest).read_text(encoding="utf-8"))
-    witness = json.loads(Path(args.witness).read_text(encoding="utf-8")) if args.witness else None
+    manifest = _read_json(args.manifest, "manifest")
+    witness = _read_json(args.witness, "witness") if args.witness else None
     result = verify(manifest, repo=Path(args.repo), manifest_path=args.manifest,
                     registry_dir=Path(args.registry) if args.registry else None,
                     external_witness=witness)
@@ -293,8 +309,8 @@ def cmd_attest(args) -> int:
     from . import attest
     from .provenance import code_commit
 
-    submitted = json.loads(Path(args.submitted).read_text(encoding="utf-8"))
-    rerun = json.loads(Path(args.rerun).read_text(encoding="utf-8")) if args.rerun else None
+    submitted = _read_json(args.submitted, "submitted manifest")
+    rerun = _read_json(args.rerun, "rerun manifest") if args.rerun else None
     record = attest.build(submitted=submitted, rerun=rerun, maintainer=args.maintainer,
                           code_commit=code_commit(), note=args.note or "",
                           failure=args.failure or "")
@@ -408,6 +424,13 @@ def main(argv: list[str] | None = None) -> int:
     except AssayError as exc:
         print(f"assay: {exc}", file=sys.stderr)
         return exc.exit_code
+    except OSError as exc:
+        # Anything filesystem-shaped that slipped through is input trouble, not a crash.
+        print(f"assay: {exc.strerror}: {exc.filename}", file=sys.stderr)
+        return 3
+    except json.JSONDecodeError as exc:
+        print(f"assay: malformed JSON: {exc}", file=sys.stderr)
+        return 3
     except UsageError as exc:  # pragma: no cover - argparse handles most of these
         print(f"assay: {exc}", file=sys.stderr)
         return EXIT_USAGE

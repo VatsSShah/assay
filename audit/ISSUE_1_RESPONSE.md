@@ -157,7 +157,7 @@ priority attached: a recomputable result format, levelled verification with a wr
 trust boundary, and a frozen weighted crosswalked task set. It says explicitly that this is
 smaller than "a benchmark".
 
-The suite is 203 tests, all standard library. The claims are enforced: five withdrawn phrases are
+The suite is 305 tests, all standard library. The claims are enforced: five withdrawn phrases are
 banned by a test across thirteen surfaces, and every fenced command in the documentation is
 executed by another.
 

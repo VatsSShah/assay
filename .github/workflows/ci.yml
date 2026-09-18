@@ -228,7 +228,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Executable documentation
+      - name: Executable documentation, and numbers that match reality
         run: python -m unittest tests.test_artifacts_and_docs -v
       - name: The demo runs from reset
         run: |

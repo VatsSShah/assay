@@ -43,6 +43,18 @@ stale generated file fails the build.
   have strengthened a guarantee — update the claim wording in README, SPEC §4.2, SUBMIT.md and
   the verifier docstring in the same change, and only then.
 
+## Numbers in prose
+
+Documentation that states an exact count -- "312 tests", "31 tasks", "15 blind spots" -- is
+checked against reality by `tests/test_artifacts_and_docs.py::DocumentedNumbersMatchReality`. Add
+a test and those numbers go stale, so the guard fails and you update them in the same change.
+
+```bash
+python audit/collect_evidence.py --sync-docs
+```
+
+rewrites every stated test count to the measured one.
+
 ## Claims discipline
 
 `tests/test_artifacts_and_docs.py::ClaimConsistency` fails the build if withdrawn wording

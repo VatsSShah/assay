@@ -230,3 +230,68 @@ class ModalityTruth(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CodeAndDocsAgree(unittest.TestCase):
+    """Cross-checks that would otherwise only be caught by someone reading both carefully."""
+
+    def test_every_verification_level_is_documented_in_the_readme(self):
+        import assay_verifier as V
+
+        readme = (ROOT / "README.md").read_text()
+        for level in V.LEVELS + V.LEVELS_OUT_OF_SCOPE:
+            with self.subTest(level=level):
+                self.assertIn(level, readme)
+
+    def test_the_validity_module_documents_all_eight_rules(self):
+        from assay_bench import validity
+
+        self.assertEqual(len(re.findall(r"^V(\d)\.", validity.__doc__, re.M)), 8)
+
+    def test_the_minimum_trial_count_is_stated_where_it_is_enforced(self):
+        from assay_bench import validity
+
+        n = str(validity.MIN_TRIALS_COMPLETE)
+        self.assertIn(n, (ROOT / "README.md").read_text())
+        spec = (ROOT / "SPEC.md").read_text()
+        self.assertTrue(f"N >= {n}" in spec or f"N ≥ {n}" in spec,
+                        "SPEC must state the minimum trial count that validity enforces")
+
+    def test_the_observed_length_bound_is_published_in_the_schema(self):
+        import assay_verifier as V
+
+        schema = json.loads((ROOT / "manifest_schema.json").read_text())
+        self.assertIn(str(V.MAX_OBSERVED_CHARS), json.dumps(schema),
+                      "the schema must publish the bound the verifier enforces")
+
+    def test_every_oracle_class_in_the_catalog_has_an_evaluator(self):
+        from assay_bench.adapters import Observation
+        from assay_bench.errors import ValidationError
+        from assay_bench.oracles import evaluate
+
+        for oracle in {t.oracle for t in CATALOG}:
+            with self.subTest(oracle=oracle):
+                try:
+                    evaluate(oracle, "x", Observation(task_id="T", trial=0), None)
+                except ValidationError as exc:
+                    self.assertNotIn("unknown oracle", str(exc))
+
+    def test_every_cli_subcommand_is_documented_somewhere(self):
+        from assay_bench.cli import build_parser
+
+        parser = build_parser()
+        subcommands = list(parser._subparsers._group_actions[0].choices)
+        docs = "".join((ROOT / n).read_text() for n in
+                       ("README.md", "CONTRIBUTING.md", "SPEC.md", "leaderboard/SUBMIT.md",
+                        "precommit/README.md", "attest/README.md", "CHANGELOG.md"))
+        for command in subcommands:
+            with self.subTest(command=command):
+                self.assertIn(command, docs, f"CLI subcommand {command!r} is undocumented")
+
+    def test_the_schema_and_the_code_agree_on_the_manifest_shape(self):
+        from assay_bench.manifest import OPTIONAL_TOP_LEVEL, REQUIRED_TOP_LEVEL
+
+        schema = json.loads((ROOT / "manifest_schema.json").read_text())
+        self.assertEqual(sorted(schema["required"]), sorted(REQUIRED_TOP_LEVEL))
+        self.assertEqual(sorted(schema["properties"]),
+                         sorted(set(REQUIRED_TOP_LEVEL) | set(OPTIONAL_TOP_LEVEL)))

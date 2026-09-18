@@ -174,6 +174,11 @@ class ExecutableDocumentation(unittest.TestCase):
             "clean venv outside the checkout"),
         "assay verify /tmp/scorecard.json --require run_complete": (
             "the INSTALLED console script; covered by tests/test_packaging.py"),
+        "python audit/collect_evidence.py --sync-docs": (
+            "runs the whole suite to measure it, so running it here would recurse; "
+            "DocumentedNumbersMatchReality already asserts the numbers it writes"),
+        "python audit/collect_evidence.py": (
+            "runs the whole suite to measure it; same recursion, and CI runs it in its own step"),
         "python -m unittest discover -s tests -t .": (
             "running the suite inside the suite would recurse forever; this IS the suite"),
         "python -m pytest tests/ -q": (
@@ -303,3 +308,163 @@ class ClaimConsistency(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CommandLineRobustness(unittest.TestCase):
+    """A CLI that tracebacks on a typo is one people stop trusting to tell them anything.
+
+    Every invocation below must exit with a documented code and a one-line message, never a
+    Python traceback.
+    """
+
+    EXIT_OK, EXIT_FAILED, EXIT_USAGE, EXIT_MALFORMED = 0, 1, 2, 3
+
+    def _assay(self, *args):
+        import os
+        env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
+        return subprocess.run([sys.executable, "-m", "assay_bench", *args], cwd=ROOT,
+                              capture_output=True, text=True, env=env, timeout=120)
+
+    def _assert_clean(self, result, expected_code, context):
+        self.assertEqual(result.returncode, expected_code,
+                         f"{context}: expected exit {expected_code}, got {result.returncode}\n"
+                         f"{result.stdout[-400:]}{result.stderr[-400:]}")
+        self.assertNotIn("Traceback", result.stderr, f"{context}: leaked a traceback")
+        self.assertNotIn("Traceback", result.stdout, f"{context}: leaked a traceback")
+
+    def test_no_arguments_prints_help_and_exits_two(self):
+        self._assert_clean(self._assay(), self.EXIT_USAGE, "no arguments")
+
+    def test_an_unknown_subcommand_exits_two(self):
+        self._assert_clean(self._assay("bogus"), self.EXIT_USAGE, "unknown subcommand")
+
+    def test_help_and_version_work(self):
+        for flag in ("--help", "--version"):
+            with self.subTest(flag=flag):
+                self._assert_clean(self._assay(flag), self.EXIT_OK, flag)
+
+    def test_a_missing_input_file_exits_three_with_a_message(self):
+        for args in (("verify", "/nonexistent.json"),
+                     ("precommit-verify", "--manifest", "/nonexistent.json"),
+                     ("attest", "--submitted", "/nonexistent.json", "--maintainer", "m")):
+            with self.subTest(command=args[0]):
+                r = self._assay(*args)
+                self._assert_clean(r, self.EXIT_MALFORMED, args[0])
+                self.assertIn("assay:", r.stderr)
+
+    def test_malformed_json_exits_three_with_a_message(self):
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
+            fh.write("{not json")
+            path = fh.name
+        try:
+            for args in (("verify", path),
+                         ("precommit-verify", "--manifest", path),
+                         ("attest", "--submitted", path, "--maintainer", "m")):
+                with self.subTest(command=args[0]):
+                    r = self._assay(*args)
+                    self._assert_clean(r, self.EXIT_MALFORMED, args[0])
+                    self.assertIn("JSON", r.stderr)
+        finally:
+            Path(path).unlink()
+
+    def test_invalid_option_values_exit_cleanly(self):
+        for args, code in ((("run", "--target", "nope"), self.EXIT_FAILED),
+                           (("run", "--trials", "-1"), self.EXIT_FAILED),
+                           (("run", "--trials", "abc"), self.EXIT_USAGE),
+                           (("run", "--task", "NOT-A-TASK"), self.EXIT_FAILED),
+                           (("reference", "--trials", "0"), self.EXIT_FAILED)):
+            with self.subTest(args=args):
+                self._assert_clean(self._assay(*args), code, " ".join(args))
+
+    def test_an_empty_registry_directory_is_not_an_error(self):
+        import tempfile
+        self._assert_clean(self._assay("precommit-list", "--registry",
+                                       tempfile.mkdtemp()), self.EXIT_OK, "empty registry")
+
+
+class DocumentedNumbersMatchReality(unittest.TestCase):
+    """Stale numbers in prose are exactly the failure this project exists to prevent.
+
+    Every count the documentation states about this repository is recomputed here. When the
+    suite grows, these fail and the docs get updated in the same change -- which is the point.
+    """
+
+    PROSE = ("README.md", "SPEC.md", "CONTRIBUTING.md", "CHANGELOG.md",
+             "IMPLEMENTATION_SUMMARY.md", "REMAINING_GAPS.md", "COVERAGE.md",
+             "audit/CLEAN_CLONE_ACCEPTANCE.md", "audit/ISSUE_1_TRIAGE.md",
+             "audit/ISSUE_1_RESPONSE.md", "audit/CLAIM_EVIDENCE_MATRIX.md",
+             "demo/PRESENTATION_REVISION_BRIEF.md", "corpus/README.md")
+
+    @classmethod
+    def setUpClass(cls):
+        import unittest as _u
+        loader = _u.TestLoader()
+        suite = loader.discover(str(ROOT / "tests"), top_level_dir=str(ROOT))
+
+        def count(s):
+            n = 0
+            for item in s:
+                n += count(item) if isinstance(item, _u.TestSuite) else 1
+            return n
+
+        cls.total = count(suite)
+
+    def test_the_stated_test_count_is_the_real_one(self):
+        """Any three-digit number described as a test count must be the actual total.
+
+        285 is allowed as well: that is the sdist's count, where the checkout-only tests skip.
+        """
+        allowed = {str(self.total), "285"}
+        pattern = re.compile(r"(\d{3})\s*(?:tests|run)\b|(?:tests|suite)[^.\n]{0,24}?\b(\d{3})\b")
+        for name in self.PROSE:
+            path = ROOT / name
+            if not path.is_file():
+                continue
+            for match in pattern.finditer(path.read_text(encoding="utf-8")):
+                number = match.group(1) or match.group(2)
+                with self.subTest(doc=name, number=number):
+                    self.assertIn(number, allowed,
+                                  f"{name} states {number} where the suite has {self.total}")
+
+    def test_the_stated_task_count_is_the_real_one(self):
+        catalog = json.loads((ROOT / "tasks.json").read_text())
+        counts = {
+            "tasks": len(catalog["tasks"]),
+            "mode_b": sum(1 for t in catalog["tasks"] if t["mode"] == "B"),
+            "mode_a": sum(1 for t in catalog["tasks"] if t["mode"] == "A"),
+            "canary": sum(1 for t in catalog["tasks"] if t["oracle"] == "canary"),
+            "behavioral": sum(1 for t in catalog["tasks"] if t["oracle"] == "behavioral"),
+            "protocol": sum(1 for t in catalog["tasks"] if t["oracle"] == "protocol"),
+        }
+        self.assertEqual(counts, {"tasks": 31, "mode_b": 28, "mode_a": 3,
+                                  "canary": 25, "behavioral": 4, "protocol": 2},
+                         "the frozen shape changed; every document stating it must be updated")
+        for name in ("README.md", "SPEC.md", "CHANGELOG.md"):
+            text = (ROOT / name).read_text(encoding="utf-8")
+            with self.subTest(doc=name):
+                self.assertIn("31", text)
+
+    def test_the_stated_blind_spot_count_is_the_real_one(self):
+        from .test_oracle_blind_spots import CASES
+
+        detected = sum(1 for _, observed, expected, _ in CASES if expected)
+        missed = len(CASES) - detected
+        for name in ("README.md", "SPEC.md", "CHANGELOG.md", "IMPLEMENTATION_SUMMARY.md",
+                     "demo/PRESENTATION_REVISION_BRIEF.md", "audit/ISSUE_1_TRIAGE.md"):
+            text = (ROOT / name).read_text(encoding="utf-8")
+            if "blind spot" not in text.lower() and "transformation" not in text.lower():
+                continue
+            with self.subTest(doc=name):
+                self.assertIn(str(missed), text,
+                              f"{name} discusses the blind spots but not the real count ({missed})")
+
+    def test_the_stated_multimodal_count_is_the_real_one(self):
+        catalog = json.loads((ROOT / "tasks.json").read_text())
+        simulated = [t["id"] for t in catalog["tasks"]
+                     if (t.get("execution") or {}).get("implemented_modality") == "text_simulation"]
+        self.assertEqual(len(simulated), 6)
+        for name in ("README.md", "SPEC.md", "COVERAGE.md"):
+            text = (ROOT / name).read_text(encoding="utf-8")
+            with self.subTest(doc=name):
+                self.assertIn("Six" if name != "COVERAGE.md" else "Six", text)

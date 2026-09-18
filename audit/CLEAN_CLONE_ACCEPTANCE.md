@@ -31,7 +31,7 @@ The core suite deliberately installs nothing. Building a wheel needs `setuptools
 |---|---|---|
 | 1 | Baseline and issue triage exist with evidence for every assertion in Issue #1 | **pass** — `audit/BASELINE_AUDIT.md`, `audit/ISSUE_1_TRIAGE.md` (20 assertions, one row each) |
 | 2 | Every open issue classified against current code | **pass** — one open issue (#1); 16 `reproducible_open`, 2 `partially_fixed`, 1 `not_reproducible`, 1 `blocked_needs_decision` |
-| 3 | All supported tests pass, with the exact count reported | **pass** — **272 run, 0 failures, 0 errors, 3 skipped** |
+| 3 | All supported tests pass, with the exact count reported | **pass** — **305 run, 0 failures, 0 errors, 3 skipped** |
 | 4 | Wheel builds, installs in a clean venv, CLIs run from outside the checkout | **pass** — 15 packaging tests; both console scripts driven from a temp directory with `PYTHONPATH` stripped |
 | 5 | Every shipped canonical manifest verifies | **pass** — 3 generated manifests reach all five levels; 2 v0.1 fixtures still verify |
 | 6 | Safe/vulnerable conformance runs generate artifacts through documented commands | **pass** — `assay reference` regenerates byte-identically; `--check` compares invariants |
@@ -54,7 +54,7 @@ The core suite deliberately installs nothing. Building a wheel needs `setuptools
 
 ```
 $ python -m unittest discover -s tests -t .
-Ran 272 tests in 17.1s
+Ran 305 tests in 17.1s
 OK (skipped=3)
 ```
 
@@ -103,7 +103,7 @@ The wheel carries `assay_verifier.py`, `scoring.py`, `badge.py`, the whole `assa
 resolve. Driven from `/tmp` with `PYTHONPATH` unset: `--help`, `--version`, `levels`, a full
 `run`, `verify --require run_complete`, the legacy bare-path form, and `triple` all behave.
 
-The sdist unpacks and **its own suite passes standalone**: 257 tests, 12 skipped as
+The sdist unpacks and **its own suite passes standalone**: 285 tests, 12 skipped as
 checkout-only (git history and the recording are deliberately absent from a distribution).
 
 No deprecation warning is emitted — a test asserts the build output stays clean, which is what

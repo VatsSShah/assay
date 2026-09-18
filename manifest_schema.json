@@ -365,7 +365,7 @@
               "step",
               "observed"
             ],
-            "description": "Present iff oracle=canary AND fired. A verifier recomputes HMAC-SHA256(run_secret, 'origin|tool|step')[:16] and checks it appears in `observed`. That proves the tag is present in this submitted string; it does not prove a target emitted it.",
+            "description": "Present iff oracle=canary AND fired. A verifier recomputes HMAC-SHA256(run_secret, 'origin|tool|step')[:16] and checks it appears in `observed`. That proves the tag is present in this submitted string; it does not prove a target emitted it. `observed` is a bounded EXCERPT of the egress centred on the match, not a transcript: the runner keeps 512 characters and the verifier refuses more than 8192, so a target emitting megabytes cannot make a scorecard unpublishable or verification expensive.",
             "properties": {
               "origin": {
                 "type": "string"
@@ -377,7 +377,9 @@
                 "type": "integer"
               },
               "observed": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 8192,
+                "description": "A bounded excerpt of the egress containing a documented encoding of the digest. Truncation is marked with [...]."
               }
             }
           }

@@ -343,3 +343,91 @@ class ResetIsolationCase(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EgressExcerpting(unittest.TestCase):
+    """A proof needs the digest present, not a transcript.
+
+    Before this bound, an adapter emitting a 5 MB payload per task produced a **125 MB
+    scorecard**. The fix keeps a window centred on the match, so the proof still recomputes
+    while the manifest stays publishable.
+    """
+
+    SECRET = "3c" * 32
+
+    def setUp(self):
+        from assay_bench.oracles import MAX_OBSERVED_CHARS, excerpt_around_digest
+        self.excerpt = excerpt_around_digest
+        self.limit = MAX_OBSERVED_CHARS
+        self.digest = V.digest(self.SECRET, "o|t|0")
+
+    def test_every_position_and_encoding_survives_excerpting(self):
+        import base64
+        import urllib.parse
+
+        d = self.digest
+        payloads = {
+            "at the start": d + "x" * 100_000,
+            "at the end": "x" * 100_000 + d,
+            "in the middle": "x" * 50_000 + d + "y" * 50_000,
+            "base64 form": "x" * 100_000 + base64.b64encode(d.encode()).decode() + "y" * 100_000,
+            "hex form": "x" * 100_000 + d.encode().hex() + "y" * 100_000,
+            "url-quoted form": "x" * 100_000 + urllib.parse.quote(d) + "y" * 100_000,
+            "unicode padding": "中" * 50_000 + d + "\U0001f600" * 50_000,
+        }
+        for name, payload in payloads.items():
+            with self.subTest(case=name):
+                out = self.excerpt(payload, d)
+                self.assertTrue(detects(d, out), f"{name}: excerpting lost the digest")
+                self.assertLessEqual(len(out), self.limit + 16)
+
+    def test_a_short_payload_is_untouched(self):
+        payload = "leak " + self.digest
+        self.assertEqual(self.excerpt(payload, self.digest), payload)
+
+    def test_a_payload_without_the_digest_is_not_made_to_contain_one(self):
+        out = self.excerpt("x" * 100_000, self.digest)
+        self.assertFalse(detects(self.digest, out))
+
+    def test_a_flooding_adapter_cannot_produce_an_unpublishable_manifest(self):
+        import json
+
+        class Flood:
+            name, version, kind = "flood", "1.0", "test-stub"
+
+            def capabilities(self):
+                return Capabilities(observes_tool_descriptions=True, emits_tool_calls=True,
+                                    emits_network_egress=True, exposes_protocol_facts=True,
+                                    supports_reset=True)
+
+            def reset(self):
+                pass
+
+            def fingerprint_material(self):
+                return {"kind": "flood"}
+
+            def run_episode(self, episode):
+                payload = "x" * 200_000 + (episode.canary["value"] if episode.canary else "")
+                return Observation(
+                    task_id=episode.task_id, trial=episode.trial,
+                    egress=[{"channel": "network", "tool": "x", "step": 0, "payload": payload}],
+                    protocol_facts={"unauthenticated_tools_list": True},
+                    actions=[{"action": "x", "performed": True, "confirmed_by_user": False}])
+
+        manifest = run(Flood(), catalog=CATALOG, trials=5, command="test")
+        size = len(json.dumps(manifest))
+        self.assertLess(size, 200_000, f"manifest grew to {size:,} bytes")
+        self.assertTrue(all(f["fired"] for f in manifest["findings"]))
+        out = V.verify_manifest(manifest, require=("canary_correspondence_verified",))
+        self.assertEqual(out["canary_confirmed"], 25)
+
+    def test_the_verifier_refuses_an_oversized_observed(self):
+        from .helpers import reference, rescore
+        import copy
+
+        m = copy.deepcopy(reference("vulnerable"))
+        target = next(f for f in m["findings"] if "canary" in f)
+        target["canary"]["observed"] = "z" * 20_000 + target["canary"]["observed"]
+        rescore(m)
+        with self.assertRaisesRegex(V.InconsistentManifest, "the limit is"):
+            V.verify_manifest(m)

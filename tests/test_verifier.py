@@ -412,3 +412,155 @@ class CommandLine(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ValidityBlockIsVerified(unittest.TestCase):
+    """The validity block claims things a reader relies on, so none of it is taken on trust.
+
+    Every case below was ACCEPTED before this cross-check existed: the block was written by the
+    submitter and, apart from the lower bound, never recomputed.
+    """
+
+    def _mutate(self, fn):
+        import copy
+        m = copy.deepcopy(reference("vulnerable"))
+        fn(m)
+        return reseal(m)
+
+    def test_the_shipped_manifests_still_verify(self):
+        for name in ("vulnerable", "hardened", "mixed"):
+            with self.subTest(target=name):
+                self.assertIn("run_complete", V.verify_manifest(reference(name))["levels_verified"])
+
+    def test_a_tally_that_does_not_sum_to_the_trial_count_is_rejected(self):
+        m = self._mutate(lambda d: d["validity"]["per_task_outcomes"].update(M1={"exploited": 3}))
+        with self.assertRaisesRegex(V.InconsistentManifest, "accounts for 3 trial"):
+            V.verify_manifest(m)
+
+    def test_findings_must_follow_from_the_tally(self):
+        m = self._mutate(lambda d: d["validity"]["per_task_outcomes"].update(
+            {t: {"resisted": d["trials_per_task"]} for t in d["validity"]["per_task_outcomes"]}))
+        with self.assertRaisesRegex(V.InconsistentManifest, "fired=True but the trial tally"):
+            V.verify_manifest(m)
+
+    def test_an_asr_that_the_tally_does_not_imply_is_rejected(self):
+        def half(d):
+            n = d["trials_per_task"]
+            d["validity"]["per_task_outcomes"]["M1"] = {"exploited": n // 2, "resisted": n - n // 2}
+        with self.assertRaisesRegex(V.InconsistentManifest, "but the tally implies"):
+            V.verify_manifest(self._mutate(half))
+
+    def test_a_missing_per_task_tally_is_rejected(self):
+        m = self._mutate(lambda d: d["validity"].pop("per_task_outcomes"))
+        with self.assertRaisesRegex(V.MalformedManifest, "not checkable without"):
+            V.verify_manifest(m)
+
+    def test_a_tally_covering_the_wrong_tasks_is_rejected(self):
+        m = self._mutate(lambda d: d["validity"]["per_task_outcomes"].update(ZZZ={"exploited": 25}))
+        with self.assertRaisesRegex(V.InconsistentManifest, "extra and is missing"):
+            V.verify_manifest(m)
+
+    def test_unknown_or_negative_trial_states_are_rejected(self):
+        with self.assertRaisesRegex(V.InconsistentManifest, "unknown trial state"):
+            V.verify_manifest(self._mutate(
+                lambda d: d["validity"]["per_task_outcomes"].update(M1={"vibes": 25})))
+        with self.assertRaisesRegex(V.InconsistentManifest, "non-negative integer"):
+            V.verify_manifest(self._mutate(
+                lambda d: d["validity"]["per_task_outcomes"].update(
+                    M1={"exploited": 26, "resisted": -1})))
+
+    def test_every_stated_task_list_is_recomputed(self):
+        for field, value, pattern in (
+            ("inconclusive_tasks", ["M1"], "inconclusive_tasks"),
+            ("unsupported_tasks", ["M1"], "unsupported_tasks"),
+            ("tasks_below_conclusive_rate", ["M1"], "tasks_below_conclusive_rate"),
+            ("missing_tasks", ["M1"], "missing_tasks"),
+        ):
+            with self.subTest(field=field):
+                m = self._mutate(lambda d, f=field, v=value: d["validity"]["assessment"].update({f: v}))
+                with self.assertRaisesRegex(V.InconsistentManifest, pattern):
+                    V.verify_manifest(m)
+
+    def test_every_stated_count_is_recomputed(self):
+        for field, value in (("required_tasks", 2), ("reported_tasks", 99),
+                             ("trials_per_task", 1)):
+            with self.subTest(field=field):
+                m = self._mutate(lambda d, f=field, v=value: d["validity"]["assessment"].update({f: v}))
+                with self.assertRaises(V.InconsistentManifest):
+                    V.verify_manifest(m)
+
+    def test_an_unknown_rules_version_is_refused(self):
+        m = self._mutate(lambda d: d["validity"].update(rules_version="99"))
+        with self.assertRaisesRegex(V.InconsistentManifest, "cannot check it"):
+            V.verify_manifest(m)
+
+    def test_an_inflated_lower_bound_is_rejected(self):
+        m = self._mutate(lambda d: d["validity"].update(agent_resistance_lower_bound=99.0))
+        with self.assertRaisesRegex(V.InconsistentManifest, "lower bound must charge"):
+            V.verify_manifest(m)
+
+    def test_completion_cannot_be_chosen_when_the_facts_force_partial(self):
+        """The runner computes completion; a submitter restating it is checked against the facts."""
+        import copy
+        m = copy.deepcopy(reference("vulnerable"))
+        dropped = m["findings"].pop()
+        m["validity"]["per_task_outcomes"].pop(dropped["id"])
+        m["validity"]["assessment"].update(missing_tasks=[dropped["id"]], reported_tasks=30)
+        m["agent_resistance_score"] = V._fixed_denominator_score(
+            load(ROOT / "tasks.json"), m["findings"], "B")
+        m["server_posture_score"] = V._fixed_denominator_score(
+            load(ROOT / "tasks.json"), m["findings"], "A")
+        block = m["validity"]
+        block["agent_resistance_lower_bound"] = V._fixed_denominator_score(
+            load(ROOT / "tasks.json"), m["findings"], "B", missing_asr=1.0)
+        block["server_posture_lower_bound"] = V._fixed_denominator_score(
+            load(ROOT / "tasks.json"), m["findings"], "A", missing_asr=1.0)
+        reseal(m)
+        with self.assertRaisesRegex(V.InconsistentManifest, "says 'complete' but the run has"):
+            V.verify_manifest(m)
+
+
+class NestedFieldTyping(unittest.TestCase):
+    """The schema types every nested field; the verifier must too, or the two disagree.
+
+    Each case below was ACCEPTED before: `_check_structure` validated the top level and stopped.
+    """
+
+    def _mutate(self, fn):
+        import copy
+        m = copy.deepcopy(reference("vulnerable"))
+        fn(m)
+        return reseal(m)
+
+    def test_target_fields_are_typed(self):
+        for name, fn, pattern in (
+            ("note is an object", lambda d: d["target"].update(note={"a": 1}), "note must be a string"),
+            ("note is a number", lambda d: d["target"].update(note=5), "note must be a string"),
+            ("kind is empty", lambda d: d["target"].update(kind=""), "kind must be a non-empty"),
+            ("model_snapshot is a list", lambda d: d["target"].update(model_snapshot=[]),
+             "model_snapshot must be a string or null"),
+        ):
+            with self.subTest(case=name):
+                with self.assertRaisesRegex(V.InconsistentManifest, pattern):
+                    V.verify_manifest(self._mutate(fn))
+
+    def test_an_unknown_field_inside_target_is_rejected(self):
+        with self.assertRaisesRegex(V.MalformedManifest, "target has unknown field"):
+            V.verify_manifest(self._mutate(lambda d: d["target"].update(sneaky=1)))
+
+    def test_harness_fields_are_typed(self):
+        for key in ("engine", "assay_version"):
+            with self.subTest(field=key):
+                with self.assertRaisesRegex(V.InconsistentManifest, f"harness.{key} must be"):
+                    V.verify_manifest(self._mutate(lambda d, k=key: d["harness"].update({k: None})))
+
+    def test_top_level_strings_must_be_non_empty_strings(self):
+        for key in ("target_fingerprint", "generated_at"):
+            with self.subTest(field=key):
+                with self.assertRaisesRegex(V.InconsistentManifest, key):
+                    V.verify_manifest(self._mutate(lambda d, k=key: d.update({k: 12345})))
+
+    def test_a_model_snapshot_of_null_is_allowed(self):
+        """Null is the honest value for a target that is not a model; it must stay legal."""
+        m = self._mutate(lambda d: d["target"].update(model_snapshot=None))
+        self.assertIn("internally_consistent", V.verify_manifest(m)["levels_verified"])

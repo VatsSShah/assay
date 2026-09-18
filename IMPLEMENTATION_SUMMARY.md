@@ -137,7 +137,7 @@ stub — is replaced by `conformance_matrix.json`, which reports recall, specifi
 discrimination, **omits the intervals**, and carries a field explaining why. The old file is kept
 at `tests/fixtures/legacy_v0_1/` as evidence.
 
-## 7. Tests: 7 → 272, all standard library
+## 7. Tests: 7 → 305, all standard library
 
 The v0.1 suite was 7 pytest tests. `python -m unittest discover` reported `Ran 0 tests … OK` — a
 green result that executed nothing — and pytest could not be installed in the audit environment,
@@ -243,7 +243,7 @@ a test fails if any surface implies otherwise.
 - **The wheel carries what it needs**: verifier, scorer, badge tool, runner package, the frozen
   catalog and the published schema. It previously shipped one module and no catalog, so an
   installed verifier could not reach `catalog_bound`.
-- **An sdist builds and its own test suite passes from the unpacked tree** (257 tests; 12 skip as
+- **An sdist builds and its own test suite passes from the unpacked tree** (285 tests; 12 skip as
   checkout-only, which they say). Recording binaries are excluded from both distributions and a
   test asserts it.
 - **SPDX licence metadata**, so builds emit no deprecation warning, with a test asserting the

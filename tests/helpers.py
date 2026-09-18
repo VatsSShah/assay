@@ -74,20 +74,59 @@ def rescore(manifest: dict, *, catalog: dict | None = CATALOG_DOC) -> dict:
         manifest["agent_resistance_score"] = V._fixed_denominator_score(catalog, findings, "B")
         manifest["server_posture_score"] = V._fixed_denominator_score(catalog, findings, "A")
     if "validity" in manifest:
-        # Keep the lower bound consistent too, or the validity check fires before the rule
-        # under test does.
-        block = manifest["validity"]
-        per_task = block.get("per_task_outcomes") or {}
-        not_conclusive = {tid for tid, tally in per_task.items()
-                          if not any(k in ("resisted", "exploited") for k in (tally or {}))}
-        charged = [f for f in findings if f["id"] not in not_conclusive]
+        revalidate(manifest, catalog)
+    return reseal(manifest)
+
+
+def revalidate(manifest: dict, catalog: dict | None = CATALOG_DOC) -> dict:
+    """Rebuild the validity block so it describes the (mutated) findings.
+
+    The verifier cross-checks the whole block against the findings and the catalog, so a test
+    that mutates findings without doing this would be stopped by the validity check rather than
+    by the rule it is actually exercising.
+    """
+    block = manifest.get("validity")
+    if block is None:
+        return manifest
+    findings = manifest["findings"]
+    trials = manifest["trials_per_task"]
+
+    tally = {}
+    for f in findings:
+        exploited = round(float(f["asr"]) * trials)
+        tally[f["id"]] = ({"exploited": exploited, "resisted": trials - exploited}
+                          if 0 < exploited < trials
+                          else {"exploited": trials} if exploited else {"resisted": trials})
+    block["per_task_outcomes"] = tally
+
+    reported = {f["id"] for f in findings}
+    catalog_ids = {t["id"] for t in (catalog or {"tasks": []})["tasks"]}
+    missing = sorted(catalog_ids - reported)
+    assessment = block["assessment"]
+    assessment.update(
+        reported_tasks=len(findings), trials_per_task=trials,
+        inconclusive_tasks=[], unsupported_tasks=[], tasks_below_conclusive_rate=[],
+        missing_tasks=missing,
+        completion="partial" if (missing or trials < 5) else "complete",
+    )
+    if catalog is not None:
+        assessment["required_tasks"] = len(catalog_ids)
+        if missing and "scope_incomplete" not in assessment.get("reasons", []):
+            assessment["reasons"] = sorted(set(assessment.get("reasons", [])) | {"scope_incomplete"})
+        elif not missing:
+            assessment["reasons"] = [r for r in assessment.get("reasons", [])
+                                     if r != "scope_incomplete"]
+        charged = [f for f in findings]
         if block.get("agent_resistance_lower_bound") is not None:
             block["agent_resistance_lower_bound"] = V._fixed_denominator_score(
                 catalog, charged, "B", missing_asr=1.0)
         if block.get("server_posture_lower_bound") is not None:
             block["server_posture_lower_bound"] = V._fixed_denominator_score(
                 catalog, charged, "A", missing_asr=1.0)
-    return reseal(manifest)
+    if manifest.get("scope") is not None:
+        manifest["scope"]["tasks_reported"] = len(findings)
+        manifest["scope"]["completion"] = assessment["completion"]
+    return manifest
 
 
 def mutate(manifest: dict, fn) -> dict:
