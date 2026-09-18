@@ -1,0 +1,17 @@
+{
+  "schema": "assay/attestation/1",
+  "kind": "clean_clone_reproduction",
+  "maintainer": "audit session that produced these artifacts (NOT an independent maintainer)",
+  "attested_at": "2026-09-18T10:06:57.306091+00:00",
+  "code_commit": "96319bbabe02ccf8291b7c8e916c09b64cc50f2e",
+  "submitted_manifest_integrity_hash": "9f5fe6013d0dc4ee945bb5c7fa02460cc0bd035e6d349e7467009d3320c53e79",
+  "rerun_manifest_integrity_hash": "34bbf2cf10d22696022598efe125465f9d30ef96bb2b3f2a2fcbff013144bfb9",
+  "target_fingerprint": "c00b388f3353988e",
+  "target_is_real": true,
+  "status": "match",
+  "differences": [],
+  "submitted_invariants_digest": "4dadddb9e32cd85e9e5cb4fccb8fb477ebaae3c4db4bc863b77984912cb29c92",
+  "rerun_invariants_digest": "4dadddb9e32cd85e9e5cb4fccb8fb477ebaae3c4db4bc863b77984912cb29c92",
+  "note": "Reran from a fresh clone of this repository at 96319bb, against the reference MCP server built from that clone's own source. Invariants were compared, not bytes: a rerun mints a fresh secret, so digests and timestamps differ legitimately. The invariants digests matched exactly.",
+  "scope": "This is NOT a maintainer attestation. It records that someone reran from a fresh clone of the published source and the run invariants matched, which is evidence the artifacts are reproducible. It establishes nothing about independence: when the rerunner is the party that produced the artifacts, it is a self-check. It can never support the maintainer_attested level."
+}

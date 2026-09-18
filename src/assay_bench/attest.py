@@ -79,18 +79,51 @@ def compare(submitted: dict[str, Any], rerun: dict[str, Any]) -> dict[str, Any]:
             "rerun_invariants_digest": invariants_digest(rerun)}
 
 
+#: What a record in ``attest/`` actually is. The distinction is structural rather than left to
+#: a note, because a file sitting in a directory called `attest/` reads as an attestation and a
+#: reader should not have to parse prose to find out it is not one.
+#:
+#: * ``maintainer_attestation`` -- a maintainer, independent of the submitter, reran the target
+#:   and compared invariants. This is the only kind the leaderboard shows as attested, and the
+#:   only kind that can ever support the `maintainer_attested` level.
+#: * ``clean_clone_reproduction`` -- someone reran from a fresh clone and the invariants matched.
+#:   That is evidence the artifacts are reproducible from published source. It says nothing
+#:   about independence, and when the rerunner is the same party that produced the artifacts it
+#:   says nothing about trust either.
+KIND_MAINTAINER = "maintainer_attestation"
+KIND_CLEAN_CLONE = "clean_clone_reproduction"
+KINDS = (KIND_MAINTAINER, KIND_CLEAN_CLONE)
+
+
 def build(*, submitted: dict[str, Any], rerun: dict[str, Any] | None, maintainer: str,
-          code_commit: str | None, note: str = "", failure: str = "") -> dict[str, Any]:
+          code_commit: str | None, note: str = "", failure: str = "",
+          kind: str = KIND_MAINTAINER) -> dict[str, Any]:
     if not maintainer:
         raise ValidationError("an attestation must name the maintainer who performed it")
+    if kind not in KINDS:
+        raise ValidationError(f"kind must be one of {list(KINDS)}, got {kind!r}")
     if rerun is None:
         result = {"status": STATUS_FAILED, "differences": [failure or "rerun did not complete"],
                   "submitted_invariants_digest": invariants_digest(submitted),
                   "rerun_invariants_digest": None}
     else:
         result = compare(submitted, rerun)
+    scope = {
+        KIND_MAINTAINER: (
+            "This attests that the named maintainer reran the target described by "
+            "target_fingerprint and compared run invariants. It does not attest that "
+            "the target is any particular commercial product, and it does not "
+            "upgrade the submitter's own evidence."),
+        KIND_CLEAN_CLONE: (
+            "This is NOT a maintainer attestation. It records that someone reran from a fresh "
+            "clone of the published source and the run invariants matched, which is evidence "
+            "the artifacts are reproducible. It establishes nothing about independence: when "
+            "the rerunner is the party that produced the artifacts, it is a self-check. It can "
+            "never support the maintainer_attested level."),
+    }[kind]
     return {
         "schema": SCHEMA,
+        "kind": kind,
         "maintainer": maintainer,
         "attested_at": datetime.now(timezone.utc).isoformat(),
         "code_commit": code_commit,
@@ -103,10 +136,7 @@ def build(*, submitted: dict[str, Any], rerun: dict[str, Any] | None, maintainer
         "submitted_invariants_digest": result["submitted_invariants_digest"],
         "rerun_invariants_digest": result["rerun_invariants_digest"],
         "note": note,
-        "scope": ("This attests that the named maintainer reran the target described by "
-                  "target_fingerprint and compared run invariants. It does not attest that "
-                  "the target is any particular commercial product, and it does not "
-                  "upgrade the submitter's own evidence."),
+        "scope": scope,
     }
 
 
@@ -117,6 +147,11 @@ def validate(record: Any) -> dict[str, Any]:
                 "status"):
         if key not in record:
             raise MalformedInput(f"attestation missing {key!r}")
+    # Records written before `kind` existed were all maintainer attestations by construction,
+    # so defaulting preserves them without letting a new record omit the distinction silently.
+    kind = record.setdefault("kind", KIND_MAINTAINER)
+    if kind not in KINDS:
+        raise ValidationError(f"unknown attestation kind {kind!r}")
     if record["schema"] != SCHEMA:
         raise ValidationError(f"unsupported attestation schema {record['schema']!r}")
     if record["status"] not in (STATUS_MATCH, STATUS_DIVERGED, STATUS_FAILED):

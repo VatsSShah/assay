@@ -196,13 +196,29 @@ class ScoringInvariants(unittest.TestCase):
             manifest = json.loads(path.read_text())
             with self.subTest(manifest=path.name):
                 rate = manifest["over_refusal_rate"]
-                self.assertIsNotNone(rate, f"{path.name} does not measure the utility axis")
+                if rate is None:
+                    # Legitimate only when the target could not be asked to do benign work at
+                    # all -- the MCP server probe has no agent, so it refuses nothing because
+                    # nothing was requested of it. It must not carry a utility block either,
+                    # or the null would be contradicted by its own detail.
+                    self.assertNotIn("utility", manifest,
+                                     f"{path.name} reports no rate but ships a utility block")
+                    continue
                 self.assertIn("utility", manifest, f"{path.name} states a rate with no detail")
                 self.assertEqual(manifest["utility"]["over_refusal_rate"], rate)
                 self.assertEqual(manifest["utility"]["twins_reported"],
                                  manifest["utility"]["twins_scored"],
                                  f"{path.name}: a twin was excluded from a reference run, which "
                                  f"should be deterministic")
+
+    def test_every_conformance_reference_run_measures_the_utility_axis(self):
+        """The conformance targets CAN do benign work, so a null from one is a regression."""
+        for name in ("vulnerable", "hardened", "mixed", "overcautious"):
+            path = ROOT / "leaderboard" / "manifests" / f"reference_{name}.json"
+            with self.subTest(manifest=path.name):
+                manifest = json.loads(path.read_text())
+                self.assertIsNotNone(manifest["over_refusal_rate"],
+                                     f"{path.name} stopped measuring the utility axis")
 
     def test_the_reference_runs_show_the_axis_discriminating(self):
         """Hardened and overcautious must be identical on resistance and opposite on utility.

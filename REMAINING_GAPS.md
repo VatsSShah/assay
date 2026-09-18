@@ -209,33 +209,77 @@ disappear.
 
 ---
 
-## G6 — Precommitment is implemented but unexercised, and cannot prove completeness
+## G6 — Precommitment exercised end to end, with a worked example in this repository's history
 
-**Status: partially closed.**
+**Status: closed as far as a repository can close it. `precommitment_verified` still needs CI,
+and the residual limit is structural and unchanged.**
 
-The protocol, its three levels and every edge case are implemented and tested against real git
-repositories. What does not exist is a *used* record: `precommit/registry/` is empty, because the
-committed conformance runs deliberately use a published fixed secret (so their artifacts are
-byte-reproducible), and a commitment over a published secret would be theatre.
+The protocol and its three levels were implemented and tested against throwaway git
+repositories, but `precommit/registry/` was empty: the committed conformance runs deliberately
+use a published fixed secret so their artifacts stay byte-reproducible, and a commitment over a
+published secret is theatre.
 
-The residual limit is structural: even `precommitment_verified` shows that one commitment
-predated one result. A submitter may register N commitments and reveal one. All N stay visible
-and `assay precommit-list` flags unrevealed ones — a deterrent and an audit trail, not a proof.
-"Kills cherry-picking" is withdrawn and banned by test.
+There is now a real one. Three commits, in order:
 
-`precommitment_verified` also requires a forge witness that only CI can supply; a local clone
-reaches at most `repository_ordering_verified`, and the tooling says so rather than relabelling.
+1. the commitment alone — a fresh secret was minted, its SHA-256 registered, and the secret kept
+   outside the repository. The run had not happened;
+2. the run and the reveal — the manifest for `leaderboard/manifests/precommitted_mcp_insecure.json`,
+   against the reference MCP server over real HTTP;
+3. this record.
+
+`assay precommit-verify --manifest leaderboard/manifests/precommitted_mcp_insecure.json` reaches
+**`repository_ordering_verified`** from any clone, and a test asserts it keeps doing so.
+
+**Two real defects surfaced by exercising it**, neither of which unit tests against synthetic
+repositories had found:
+
+- **`git log --follow` decided the ordering.** Rename detection is a similarity heuristic and two
+  manifests look alike to it, so `--follow` traced the new manifest back to an unrelated
+  reference manifest added in the baseline commit and denied an honest submission. Both
+  directions matter: following a *registry record* to an older file would make a commitment look
+  earlier than it is, which is a soundness failure. `--follow` is gone and both directions are
+  now tests.
+- **The target fingerprint included the ephemeral TCP port**, so the same reference server
+  fingerprinted differently on every restart and a commitment could never bind its own run. The
+  identity is now scheme, host and path, with the exclusion and its reason stated inside the
+  republished pre-image.
+
+**The residual limit is unchanged and structural.** Even at `precommitment_verified`, this shows
+that one commitment predated one result. A submitter may register N commitments and reveal one;
+all N stay visible and `assay precommit-list` flags the unrevealed ones, which is a deterrent and
+an audit trail, not a proof. "Kills cherry-picking" stays withdrawn and banned by test. A local
+clone reaches at most `repository_ordering_verified`, because the forge witness only CI can
+supply is what distinguishes ancestry from external timestamping — and repository ancestry can
+be rewritten by whoever owns the history.
 
 ---
 
-## G7 — No attestation record exists
+## G7 — A record exists in `attest/`, and it is explicitly *not* an attestation
 
-**Status: partially closed.**
+**Status: the format is exercised; a maintainer attestation has still not been performed, and
+the record says so where a machine can read it.**
 
-The format, the invariants comparison and the CLI are implemented and tested. `attest/` holds no
-records because there are no measurement submissions to attest, and a maintainer attestation over
-a stub anyone can rerun from a clean clone in half a second would add nothing. The first record
-will accompany the first measurement row.
+`attest/` was empty because there were no measurement submissions to attest, and an attestation
+over a stub anyone can rerun in half a second would add nothing.
+
+It now holds one record: an independent rerun of the precommitted run above, from a **fresh
+clone** of this repository, against the reference MCP server built from that clone's own source.
+The invariants digests matched exactly — `4dadddb9…` on both sides — which is real evidence that
+the shipped artifacts are reproducible from published source. Invariants, not bytes: a rerun
+mints a fresh secret, so digests and timestamps differ legitimately.
+
+**It is not a maintainer attestation and could not honestly be presented as one**, because the
+rerun was performed by the same session that produced the artifacts. That is a self-check. A
+file sitting in a directory called `attest/` reads as an attestation, so the distinction is now
+a field rather than a sentence in a note: records carry `kind`, either
+`maintainer_attestation` or `clean_clone_reproduction`, each with its own scope text, and the
+shipped record's scope begins *"This is NOT a maintainer attestation."* A test asserts no
+shipped record claims to be one — a record claiming a maintainer rerun that never happened would
+be exactly the fabricated evidence this audit forbids — and the offline verifier still refuses
+to emit `maintainer_attested` whatever sits in that directory.
+
+**What would close it:** a rerun by a repository maintainer, independent of whoever produced the
+submission, recorded with `kind: maintainer_attestation`. That is a person's act, not a script's.
 
 ---
 

@@ -175,3 +175,79 @@ class Attestation(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReproductionIsNotAttestation(unittest.TestCase):
+    """`attest/` holds two different things and a reader must not have to parse prose to tell.
+
+    A clean-clone rerun shows the artifacts are reproducible from published source. A maintainer
+    attestation shows an independent party got the same invariants. They are stored in the same
+    directory, so the difference is a field rather than a sentence in a note: a file sitting in a
+    directory called `attest/` reads as an attestation, and one that is not must say so where a
+    machine can see it.
+    """
+
+    def setUp(self):
+        from assay_bench import attest
+        from assay_bench.adapters.conformance import build
+        from assay_bench.catalog import load_catalog
+        from assay_bench.runner import run
+
+        self.attest = attest
+        catalog = load_catalog()
+        self.submitted = run(build("hardened"), catalog=catalog, trials=5, command="test")
+        self.rerun = run(build("hardened"), catalog=catalog, trials=5, command="test")
+
+    def _build(self, kind):
+        return self.attest.build(submitted=self.submitted, rerun=self.rerun,
+                                 maintainer="someone", code_commit=None, kind=kind)
+
+    def test_a_clean_clone_reproduction_says_it_is_not_an_attestation(self):
+        record = self._build(self.attest.KIND_CLEAN_CLONE)
+        self.assertEqual(record["kind"], self.attest.KIND_CLEAN_CLONE)
+        self.assertIn("NOT a maintainer attestation", record["scope"])
+        self.assertIn("never support the maintainer_attested level", record["scope"])
+
+    def test_a_maintainer_attestation_keeps_its_own_scope_text(self):
+        record = self._build(self.attest.KIND_MAINTAINER)
+        self.assertNotIn("NOT a maintainer attestation", record["scope"])
+        self.assertIn("reran the target", record["scope"])
+
+    def test_an_unknown_kind_is_refused_at_build_and_at_validation(self):
+        from assay_bench.errors import ValidationError
+
+        with self.assertRaises(ValidationError):
+            self._build("looks_fine_to_me")
+        record = self._build(self.attest.KIND_MAINTAINER)
+        record["kind"] = "looks_fine_to_me"
+        with self.assertRaises(ValidationError):
+            self.attest.validate(record)
+
+    def test_a_record_written_before_kind_existed_is_read_as_a_maintainer_attestation(self):
+        """Every pre-`kind` record was one by construction, so defaulting loses nothing."""
+        record = self._build(self.attest.KIND_MAINTAINER)
+        del record["kind"]
+        self.assertEqual(self.attest.validate(record)["kind"], self.attest.KIND_MAINTAINER)
+
+    def test_the_shipped_record_is_a_reproduction_and_is_labelled_one(self):
+        """It was produced by the session that produced the artifacts. That is a self-check."""
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parent.parent
+        records = sorted((root / "attest").glob("*.json"))
+        self.assertTrue(records, "the worked example's record is missing")
+        for path in records:
+            with self.subTest(record=path.name):
+                record = self.attest.validate(json.loads(path.read_text()))
+                self.assertEqual(record["kind"], self.attest.KIND_CLEAN_CLONE,
+                                 "no maintainer attestation has been performed; a record "
+                                 "claiming one would be the fabrication this audit forbids")
+                self.assertEqual(record["status"], "match")
+
+    def test_the_verifier_still_refuses_to_emit_maintainer_attested(self):
+        """Whatever sits in attest/, the offline verifier never upgrades itself."""
+        from .helpers import V
+
+        out = V.verify_manifest(self.submitted)
+        self.assertIn("maintainer_attested", out["levels_out_of_scope_for_this_tool"])
+        self.assertNotIn("maintainer_attested", out["levels_verified"])

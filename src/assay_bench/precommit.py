@@ -167,8 +167,22 @@ def _git(repo: Path, *args: str) -> str:
 
 
 def introducing_commit(repo: Path, path: str) -> tuple[str, int]:
-    """The commit that added ``path``, with its committer timestamp."""
-    out = _git(repo, "log", "--diff-filter=A", "--follow", "--format=%H %ct", "-1", "--", path)
+    """The commit that added ``path``, with its committer timestamp.
+
+    Deliberately WITHOUT ``--follow``. Rename detection is a similarity heuristic, and two
+    manifests or two registry records look extremely similar to it, so ``--follow`` chases the
+    history of a *different* file that happens to resemble this one. That was not theoretical:
+    the first real precommitted run in this repository was denied `repository_ordering_verified`
+    because ``--follow`` traced its manifest back to an unrelated reference manifest added in
+    the baseline commit.
+
+    Both directions of that error are wrong. Following a manifest to an older file makes the
+    ordering look worse and denies an honest submission; following a *registry record* to an
+    older file would make a commitment look earlier than it is, which is a soundness failure.
+    A manifest is not a rename of another manifest, so the plain question -- which commit added
+    this path -- is the right one.
+    """
+    out = _git(repo, "log", "--diff-filter=A", "--format=%H %ct", "-1", "--", path)
     if not out:
         raise PrecommitmentError(
             f"{path} has no commit that introduces it; an uncommitted file carries no "

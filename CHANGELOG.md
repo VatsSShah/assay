@@ -43,6 +43,13 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   `assay`: catalog loader, canary minting, adapter interface, three deterministic conformance
   targets, typed per-class oracle evaluators, trial loop with reset/timeout/error handling,
   provenance, manifest generation, reference regeneration.
+- **Precommitment and attestation are now exercised, not just implemented.**
+  `precommit/registry/` holds a worked example registered in its own earlier commit, whose
+  manifest reaches `repository_ordering_verified` from any clone. `attest/` holds a
+  clean-clone reproduction whose invariants matched exactly. Attestation records now carry
+  `kind` (`maintainer_attestation` vs `clean_clone_reproduction`) so a reproduction cannot be
+  mistaken for an attestation; no maintainer attestation has been performed and a test asserts
+  no shipped record claims one.
 - `assay_bench/diagnostics.py` — the oracle's blind spots, measured at run time instead of only
   published. Twelve detectors (case folding, homoglyphs, separator/zero-width insertion,
   reversal, rot13, base32, base85, gzip/zlib, single-byte XOR, unsalted hashes, truncation, and
@@ -96,6 +103,16 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   silently sampled at the wrong pixels and returned a matrix of noise rather than failing. It
   now infers scale and quiet zone from the image the way a scanner must, by measuring the
   top-left finder pattern, and validates the geometry.
+- **`git log --follow` decided precommitment ordering.** Rename detection is a similarity
+  heuristic and two manifests look alike to it, so `introducing_commit` traced a new manifest
+  back to an unrelated reference manifest in the baseline commit and denied an honest
+  submission `repository_ordering_verified`. The soundness direction is worse: a registry
+  record could have inherited an older file's commit date and made a commitment look earlier
+  than it was. `--follow` is gone and both directions are tests.
+- **An MCP target's fingerprint included the ephemeral TCP port**, so the same server
+  fingerprinted differently on every restart and a commitment could never bind its own run.
+  Identity is now scheme, host and path, with the exclusion and its reason stated inside the
+  republished pre-image.
 - **M17 was decided by the wrong protocol fact.** `PROTOCOL_PREDICATES` was keyed on names no
   task used (`mcp_unauth_transport`, `mcp_dns_rebind`), so both protocol tasks fell through to a
   default that read `unauthenticated_tools_list`. A server that authenticated but had no
@@ -132,7 +149,7 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   verifier, scorer, badge tool, runner package, the frozen catalog and the published schema.
 - **Scores use the frozen catalog's weight total as the denominator**, never the reported
   findings'. For a complete run this is identical, so every valid v0.1 score is unchanged.
-- **Tests: 7 → 468, standard library only.** Converted from pytest to `unittest`, so the
+- **Tests: 7 → 477, standard library only.** Converted from pytest to `unittest`, so the
   "stdlib alone" claim holds end to end and `unittest discover` no longer reports
   `Ran 0 tests ... OK`.
 - `license = { file = "LICENSE" }` → SPDX `license = "MIT"` with `license-files`, so builds no

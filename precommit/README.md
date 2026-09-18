@@ -66,9 +66,37 @@ PYTHONPATH=src python -m assay_bench precommit-verify --manifest leaderboard/man
 Every case above is covered by `tests/test_precommit.py`, which builds throwaway git
 repositories and commits artifacts in each order rather than mocking the history.
 
-## Why this directory is otherwise empty
+## The one record here, and why there is only one
 
-The committed conformance runs use a **published, fixed** run secret so their artifacts are
-byte-reproducible (see `assay_bench/cli.py::REFERENCE_RUN_SECRET`). A precommitment over a
-published secret would be theatre, so none is registered for them. The first real record here
+`precommit/registry/` holds a single record: a **worked example**, registered before the run it
+commits to, so the protocol is not only unit-tested but exercised once in this repository's own
+history where anyone with a clone can re-derive it.
+
+Three commits, in this order:
+
+1. **the commitment alone.** A fresh secret was minted, its SHA-256 written here, and the secret
+   kept outside the repository. The run had not happened.
+2. **the run and the reveal** — `leaderboard/manifests/precommitted_mcp_insecure.json`, against
+   this repository's reference MCP server over real HTTP.
+3. the documentation of both.
+
+```bash
+PYTHONPATH=src python -m assay_bench precommit-verify --manifest leaderboard/manifests/precommitted_mcp_insecure.json
+```
+
+reaches `repository_ordering_verified` from any clone, and `tests/test_precommit.py` asserts it
+keeps doing so.
+
+**Why not more.** The committed conformance runs use a **published, fixed** run secret so their
+artifacts are byte-reproducible (see `assay_bench/cli.py::REFERENCE_RUN_SECRET`). A precommitment
+over a published secret would be theatre, so none is registered for them. The next real record
 will accompany the first measurement submission.
+
+**Two defects this example surfaced**, neither of which the throwaway-repository tests had
+found. `introducing_commit` used `git log --follow`, whose rename detection traced the new
+manifest back to an unrelated reference manifest in the baseline commit and denied an honest
+submission — and would equally have let a registry record inherit an older file's date, which is
+a soundness failure rather than an annoyance. And the target fingerprint included the ephemeral
+TCP port, so the reference server fingerprinted differently on every restart and a commitment
+could never bind its own run. Both are fixed and both directions are now tests. Exercising a
+protocol is not the same as unit-testing it.

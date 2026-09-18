@@ -372,6 +372,16 @@ def cmd_precommit_list(args) -> int:
     return EXIT_OK
 
 
+def attest_kinds():
+    from .attest import KINDS
+    return list(KINDS)
+
+
+def attest_kind_default():
+    from .attest import KIND_MAINTAINER
+    return KIND_MAINTAINER
+
+
 # -------------------------------------------------------------------------- attest
 
 def cmd_attest(args) -> int:
@@ -380,7 +390,8 @@ def cmd_attest(args) -> int:
 
     submitted = _read_json(args.submitted, "submitted manifest")
     rerun = _read_json(args.rerun, "rerun manifest") if args.rerun else None
-    record = attest.build(submitted=submitted, rerun=rerun, maintainer=args.maintainer,
+    record = attest.build(kind=args.kind, submitted=submitted, rerun=rerun,
+                          maintainer=args.maintainer,
                           code_commit=code_commit(), note=args.note or "",
                           failure=args.failure or "")
     if args.out:
@@ -472,6 +483,10 @@ def build_parser() -> argparse.ArgumentParser:
     at.add_argument("--submitted", required=True)
     at.add_argument("--rerun")
     at.add_argument("--maintainer", required=True)
+    at.add_argument("--kind", default=attest_kind_default(), choices=attest_kinds(),
+                    help="maintainer_attestation (an independent maintainer reran it) or "
+                         "clean_clone_reproduction (someone reran from a fresh clone; evidence "
+                         "of reproducibility, not of independence)")
     at.add_argument("--note")
     at.add_argument("--failure")
     at.add_argument("--out")

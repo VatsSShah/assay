@@ -130,6 +130,73 @@ class ValidOrdering(_RepoCase):
         self.assertNotIn(precommit.LEVEL_EXTERNAL, out["levels_verified"])
 
 
+class RenameHeuristicsMustNotDecideOrdering(_RepoCase):
+    """`git log --follow` is a similarity heuristic, and two manifests look alike to it.
+
+    The first real precommitted run in this repository was denied `repository_ordering_verified`
+    because `--follow` traced its manifest back to an unrelated reference manifest added in the
+    baseline commit. Both directions of that error matter: following a manifest to an older file
+    denies an honest submission, and following a *registry record* to an older file would make a
+    commitment look earlier than it is, which is a soundness failure rather than an annoyance.
+    """
+
+    def _similar_file(self, directory: str, name: str, payload: dict, when: int):
+        path = self.tmp / directory / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, indent=2) + "\n")
+        self._git("add", "-A")
+        self._git("commit", "-qm", f"add {name}", when=when)
+        return path
+
+    def test_an_older_lookalike_manifest_does_not_become_this_ones_commit(self):
+        record, manifest = self._make_run()
+        # An earlier, structurally near-identical manifest. Rename detection finds it similar.
+        decoy = dict(manifest)
+        decoy["run_id"] = "00000000-0000-4000-8000-000000000000"
+        self._similar_file("leaderboard/manifests", "reference_decoy.json", decoy,
+                           when=1_600_000_000)
+
+        self._write_record(record)
+        self._git("add", "-A")
+        self._git("commit", "-qm", "precommit", when=1_700_000_000)
+        path = self._write_manifest(manifest, name="precommitted_result.json")
+        self._git("add", "-A")
+        self._git("commit", "-qm", "result", when=1_700_000_600)
+
+        sha, timestamp = precommit.introducing_commit(
+            self.tmp, "leaderboard/manifests/precommitted_result.json")
+        self.assertEqual(timestamp, 1_700_000_600,
+                         "the manifest's commit was resolved to an older lookalike")
+        out = self._verify(manifest, path)
+        self.assertIn(precommit.LEVEL_REPO, out["levels_verified"],
+                      out["levels_not_established"])
+
+    def test_an_older_lookalike_record_cannot_lend_a_commitment_its_date(self):
+        """The soundness direction: a commitment must not inherit an older file's commit."""
+        record, manifest = self._make_run()
+        # A genuine second record, so the registry loader accepts it and the question under
+        # test is ordering rather than validation.
+        decoy = precommit.create_record(
+            run_secret="1a" * 32, benchmark_version=CATALOG.version,
+            task_set_digest=CATALOG.digest,
+            target_fingerprint=record["target_fingerprint"], trials=2)
+        self._similar_file("precommit/registry", f"{decoy['run_id']}.json", decoy,
+                           when=1_600_000_000)
+
+        # Commit the manifest FIRST, then the commitment: the ordering is genuinely wrong.
+        path = self._write_manifest(manifest)
+        self._git("add", "-A")
+        self._git("commit", "-qm", "result", when=1_700_000_000)
+        self._write_record(record)
+        self._git("add", "-A")
+        self._git("commit", "-qm", "precommit", when=1_700_000_600)
+
+        out = self._verify(manifest, path)
+        self.assertNotIn(precommit.LEVEL_REPO, out["levels_verified"],
+                         "a commitment committed after the result was accepted because rename "
+                         "detection lent it an older file's commit")
+
+
 class InvalidOrdering(_RepoCase):
     def test_same_commit_commitment_and_reveal_prove_nothing(self):
         """This is exactly the v0.1 situation, and it must not read as verified."""
@@ -335,11 +402,35 @@ class PrecommitCommandLine(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("never registered", r.stderr)
 
-    def test_the_repository_registry_is_empty_as_documented(self):
-        """precommit/README.md explains why: the conformance runs use a published fixed secret,
-        so a commitment over it would be theatre. If a record appears here, that text is stale."""
-        repo_registry = Path(__file__).resolve().parent.parent / "precommit" / "registry"
-        self.assertEqual(sorted(p.name for p in repo_registry.glob("*.json")), [])
+    def test_the_shipped_worked_example_reaches_repository_ordering(self):
+        """Through v0.2 the registry was empty and this test asserted that.
+
+        It now asserts the opposite, against the real record: the protocol is not just
+        implemented and unit-tested, it has been run once end to end in this repository's own
+        history, and anyone with a clone can re-derive that. A local clone cannot reach
+        `precommitment_verified` -- that needs a forge witness only CI can supply -- and the
+        tooling must keep saying so rather than relabelling what it has.
+        """
+        root = Path(__file__).resolve().parent.parent
+        records = sorted((root / "precommit" / "registry").glob("*.json"))
+        self.assertTrue(records, "the worked example's registry record is missing")
+        if not (root / ".git").exists():                  # an unpacked sdist has no history
+            self.skipTest("not a git checkout, so repository ordering cannot be read")
+        for record_path in records:
+            record = json.loads(record_path.read_text())
+            manifests = [p for p in (root / "leaderboard" / "manifests").glob("*.json")
+                         if (json.loads(p.read_text()).get("provenance") or {}).get("run_id")
+                         == record["run_id"]]
+            with self.subTest(run_id=record["run_id"]):
+                self.assertEqual(len(manifests), 1,
+                                 "every committed commitment must have exactly one revealed "
+                                 "manifest, or `precommit-list` should be flagging it")
+                manifest = json.loads(manifests[0].read_text())
+                out = precommit.verify(manifest, repo=root, manifest_path=str(manifests[0]))
+                self.assertIn(precommit.LEVEL_LOCAL, out["levels_verified"])
+                self.assertIn(precommit.LEVEL_REPO, out["levels_verified"],
+                              out["levels_not_established"])
+                self.assertNotIn(precommit.LEVEL_EXTERNAL, out["levels_verified"])
 
 
 class RecordIntegrity(unittest.TestCase):
