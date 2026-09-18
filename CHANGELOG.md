@@ -50,6 +50,21 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   `kind` (`maintainer_attestation` vs `clean_clone_reproduction`) so a reproduction cannot be
   mistaken for an attestation; no maintainer attestation has been performed and a test asserts
   no shipped record claims one.
+- `assay_bench/witness.py` + `assay_bench/ed25519.py` — an **egress witness**, the structural
+  answer to gap G2. Every other level is satisfiable by a submitter who holds the run secret; a
+  witness is a party that does not. It mints the secret, plants the canaries, observes egress at
+  its own sink and signs what it saw, so `witnessed_egress` is the one level a fabrication
+  cannot reach. A witness that disagrees with the manifest fails the whole document.
+
+  Signatures are Ed25519 in pure Python (RFC 8032), because the standard library has no
+  public-key crypto and a symmetric MAC would mean "trust whoever holds the shared key" — the
+  problem again. Validated against the RFC 8032 §7.1 vectors and against non-canonical
+  encodings, off-curve points and `S >= q`. It is **not** constant-time and says so; a test
+  keeps the caveat. New CLI: `witness-key`, `witness-sign`, `witness-verify`, with the signing
+  key read from `$ASSAY_WITNESS_KEY` rather than an argument.
+
+  It does not establish that the witness is honest or independent. `independent` is a
+  declaration inside the signed bytes, so a self-witnessed run is visibly self-witnessed.
 - `assay_bench/contamination.py` — the public task set is a contamination risk, now both
   detectable and partly mitigated. `tasks.json` carries a canary GUID that exists nowhere else,
   published with the asymmetry stated: a hit establishes contamination, a miss establishes
@@ -164,7 +179,7 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   verifier, scorer, badge tool, runner package, the frozen catalog and the published schema.
 - **Scores use the frozen catalog's weight total as the denominator**, never the reported
   findings'. For a complete run this is identical, so every valid v0.1 score is unchanged.
-- **Tests: 7 → 503, standard library only.** Converted from pytest to `unittest`, so the
+- **Tests: 7 → 554, standard library only.** Converted from pytest to `unittest`, so the
   "stdlib alone" claim holds end to end and `unittest discover` no longer reports
   `Ran 0 tests ... OK`.
 - `license = { file = "LICENSE" }` → SPDX `license = "MIT"` with `license-files`, so builds no

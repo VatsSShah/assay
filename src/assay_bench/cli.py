@@ -382,6 +382,75 @@ def attest_kind_default():
     return KIND_MAINTAINER
 
 
+# ------------------------------------------------------------------------- witness
+
+def cmd_witness_key(args) -> int:
+    """Mint a witness signing key. It is printed once and never stored by this tool."""
+    from . import ed25519
+
+    secret, public = ed25519.generate_keypair()
+    _print({
+        "public_key": public.hex(),
+        "secret_key": secret.hex(),
+        "how_to_use": (
+            "Publish the public key. Keep the secret key in a secret store or an environment "
+            "variable ($ASSAY_WITNESS_KEY) and NEVER commit it: a witness key in a repository "
+            "makes every signature it ever produced worthless."),
+    })
+    return EXIT_OK
+
+
+def cmd_witness_sign(args) -> int:
+    """Sign a statement about a run this witness observed."""
+    from . import ed25519, witness as witness_mod
+    from .catalog import load_catalog
+    from .errors import UsageError
+
+    signing_key = ed25519.signing_key_from_env()
+    if signing_key is None:
+        raise UsageError(
+            "no signing key: set $ASSAY_WITNESS_KEY to a 64-hex-character Ed25519 secret key "
+            "(mint one with `assay witness-key`). It is deliberately not a command-line "
+            "argument, because arguments land in shell history and process listings.")
+    manifest = _read_json(args.manifest, "manifest")
+    catalog = load_catalog(args.tasks)
+    statement = witness_mod.build_statement(
+        run_id=(manifest.get("provenance") or {}).get("run_id"),
+        target_fingerprint=manifest["target_fingerprint"],
+        task_set_digest=catalog.digest, benchmark_version=catalog.version,
+        fired_task_ids=[f["id"] for f in manifest["findings"] if f.get("fired")],
+        trials_per_task=manifest["trials_per_task"],
+        run_secret_commitment=manifest["run_secret_commitment"],
+        witness_name=args.witness, independent=args.independent, note=args.note or "")
+    signed = witness_mod.sign_statement(statement, signing_key)
+    if args.out:
+        _write(Path(args.out), signed)
+        print(f"wrote {args.out}: witness statement signed by "
+              f"{signed['signature']['public_key'][:16]}...")
+    else:
+        _print(signed)
+    return EXIT_OK
+
+
+def cmd_witness_verify(args) -> int:
+    from . import witness as witness_mod
+
+    statement = _read_json(args.statement, "witness statement")
+    result = witness_mod.verify_statement(
+        statement, expect_public_key=args.expect_public_key)
+    if args.manifest:
+        manifest = _read_json(args.manifest, "manifest")
+        differences = witness_mod.agrees_with_manifest(statement, manifest)
+        result["agrees_with_manifest"] = not differences
+        result["differences"] = differences
+        if differences:
+            _print(result)
+            print("assay: the witness and the manifest disagree", file=sys.stderr)
+            return 1
+    _print(result)
+    return EXIT_OK
+
+
 # -------------------------------------------------------------------------- attest
 
 def cmd_attest(args) -> int:
@@ -478,6 +547,27 @@ def build_parser() -> argparse.ArgumentParser:
     pl = sub.add_parser("precommit-list", help="list registry records and their state")
     pl.add_argument("--registry")
     pl.set_defaults(func=cmd_precommit_list)
+
+    wk = sub.add_parser("witness-key", help="mint an Ed25519 witness signing key")
+    wk.set_defaults(func=cmd_witness_key)
+
+    ws = sub.add_parser("witness-sign",
+                        help="sign a statement about a run this witness observed")
+    ws.add_argument("--manifest", required=True)
+    ws.add_argument("--witness", required=True, help="who is signing")
+    ws.add_argument("--independent", action="store_true",
+                    help="set ONLY when the witness is independent of the submitter. A run a "
+                         "submitter witnessed for itself must not claim it.")
+    ws.add_argument("--note")
+    ws.add_argument("--tasks")
+    ws.add_argument("--out")
+    ws.set_defaults(func=cmd_witness_sign)
+
+    wv = sub.add_parser("witness-verify", help="check a witness statement's signature")
+    wv.add_argument("--statement", required=True)
+    wv.add_argument("--manifest", help="also check the witness agrees with this manifest")
+    wv.add_argument("--expect-public-key", help="pin a witness key you already trust")
+    wv.set_defaults(func=cmd_witness_verify)
 
     at = sub.add_parser("attest", help="record a maintainer rerun of a submitted manifest")
     at.add_argument("--submitted", required=True)

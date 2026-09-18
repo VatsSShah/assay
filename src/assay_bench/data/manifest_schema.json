@@ -556,6 +556,87 @@
         }
       },
       "additionalProperties": false
+    },
+    "witness": {
+      "type": "object",
+      "description": "An egress witness statement, signed with Ed25519. Every other level in this document is satisfiable by a submitter who holds the run secret; this one is not, because the witness minted the secret, planted the canaries and observed egress at its OWN sink, and the submitter never held the signing key. It does NOT establish that the witness is honest, that it is independent of the submitter, or that the key belongs to who you think: `independent` is a declaration, not a proof. A statement that disagrees with the findings fails the whole document. See REMAINING_GAPS G2.",
+      "required": [
+        "schema",
+        "witness",
+        "independent",
+        "run_id",
+        "target_fingerprint",
+        "fired_task_ids",
+        "signature"
+      ],
+      "properties": {
+        "schema": {
+          "const": "assay/witness-statement/1"
+        },
+        "witness": {
+          "type": "string"
+        },
+        "independent": {
+          "type": "boolean"
+        },
+        "run_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "benchmark_version": {
+          "type": "string"
+        },
+        "task_set_digest": {
+          "type": "string"
+        },
+        "target_fingerprint": {
+          "type": "string"
+        },
+        "trials_per_task": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "run_secret_commitment": {
+          "type": "string"
+        },
+        "fired_task_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "note": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "object",
+          "required": [
+            "algorithm",
+            "public_key",
+            "value"
+          ],
+          "properties": {
+            "algorithm": {
+              "const": "ed25519"
+            },
+            "public_key": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "value": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{128}$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

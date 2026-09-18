@@ -81,38 +81,69 @@ the adversarial surface, with a defined egress capture boundary.
 
 ---
 
-## G2 — A keyholder can still fabricate a passing manifest
+## G2 — A keyholder can still fabricate a self-reported manifest. A witnessed one, no.
 
-**Status: open by construction. Not fixable by any document check.**
+**Status: unfixable for self-reported runs, and that is a fact about self-reporting rather than
+a bug. The cause is now removable: a witnessed run reaches a level a fabrication cannot.**
 
-`observed` is submitter-supplied text and the submitter holds the run secret. Compute the digest,
-paste it into an invented string, and the verifier confirms it. `run_complete` forces a
-fabrication to cover all 31 tasks, which raises the cost slightly and nothing more.
+`observed` is submitter-supplied text and the submitter holds the run secret. Compute the
+digest, paste it into an invented string, and the verifier confirms it. `run_complete` forces a
+fabrication to cover all 31 tasks, which raises the cost slightly and nothing more. That limit
+is stated in the verifier docstring, README's first table, SPEC §4.2, SUBMIT.md and the
+leaderboard page, and pinned as a **passing** test
+(`test_a_full_catalog_fabrication_also_reaches_run_complete`).
 
-Mitigations that exist: the limit is stated in the verifier docstring, README's first table, SPEC
-§4.2, SUBMIT.md and the leaderboard page; it is pinned as a *passing* test
-(`test_a_full_catalog_fabrication_also_reaches_run_complete`); and the only artifact that
-addresses it — an independent maintainer rerun — is kept in a separate, repository-controlled
-place.
+### Why it happens
 
-The adjacent problem, **under-reporting**, is now unprofitable even though it remains
-undetectable. Scores use the frozen catalog's weight total as the denominator, and every manifest
-carries a lower bound charging each unreported, unsupported or inconclusive task at full weight.
-Omission can never raise that number: dropping a fully-exploited task leaves it unchanged,
-dropping any task that resisted strictly lowers it. Cherry-picking therefore gains nothing. That
-is a smaller claim than detection, and it is the one that holds.
+The submitter is both the party being measured and the party recording the measurement. They
+mint the secret, plant the canaries, observe the egress and write the document, so they hold
+every input to the check. No amount of checking a document fixes that.
 
-**What would reduce it, and the first piece that now exists.** The reductions named are a
-trusted execution path or evidence from the target side. The Mode-A path now has the second in
-embryo: the reference servers keep their own action log, written by the code that performs an
-action rather than by the client that asked for it, and `MCPServerProbe` **cross-checks** its
-own observation against it. A disagreement makes the trial inconclusive instead of letting
-either side win — a test drives exactly that case.
+### What shipped: an egress witness
 
-This is honest about its own scope. It only applies where the operator controls the server, it
-is not signed, and a submitter who controls both sides controls both accounts. It reduces
-nothing for a Mode-B submission, which is where the fabrication concern actually bites. The
-general problem stands.
+`assay_bench/witness.py` moves the adversarial side to a party the submitter does not control —
+the leaderboard in a hosted deployment, the assessor in an engagement. The witness mints the run
+secret and withholds it, plants the canaries, observes egress at its **own** sink, and signs a
+statement naming the run, the target fingerprint and which task ids fired.
+
+A submitter cannot forge that signature, because they never held the key, and cannot invent a
+leak, because the digest they would have to produce was never revealed to them.
+
+`witnessed_egress` is therefore its own verification level, never merged into
+`canary_correspondence_verified`, because the two rest on different evidence. A witness that
+**disagrees** with the manifest fails the whole document — under-reporting and over-reporting
+each have their own error — so attaching one is never strictly safe for a dishonest submitter.
+The demonstration ships: a competent fabrication that flips a finding, drops its proof and
+restates the scores passes every offline level and is caught only by the witness.
+
+Signatures are Ed25519, in `assay_bench/ed25519.py`, because the standard library has no
+public-key crypto and a symmetric MAC would mean "trust whoever holds the shared key" — the
+problem again. It is validated against the RFC 8032 §7.1 vectors and against the edge cases that
+separate a real check from one that usually says yes: non-canonical encodings, off-curve points,
+and `S >= q`, without which signatures are malleable. It is **not** constant-time, says so in
+its own docstring, and a test keeps that caveat there. Verification runs on public data, which
+is the operation a third party needs.
+
+### What a witness still does not establish
+
+That the witness is honest, that it is independent of the submitter, or that the key belongs to
+who you think. Those are questions of key custody and trust, and no signature answers them. A
+submitter running their own witness has signed their own homework — so `independent` is a field
+inside the signed bytes, it is a **declaration and not a proof**, and a self-witnessed run is
+visibly self-witnessed rather than quietly counted as evidence. The verifier reports which key
+signed rather than collapsing any of it to a verdict.
+
+The remaining honest gap: nothing here ties a public key to a real-world identity. That is a key
+distribution problem, and the answer is a published key the leaderboard pins, not more code.
+
+### The adjacent problem, unchanged
+
+**Under-reporting** is unprofitable even unwitnessed. Scores use the frozen catalog's weight
+total as the denominator, and every manifest carries a lower bound charging each unreported,
+unsupported or inconclusive task at full weight. Omission can never raise that number: dropping
+a fully-exploited task leaves it unchanged, dropping any task that resisted strictly lowers it.
+Cherry-picking gains nothing. That is a smaller claim than detection, and it is the one that
+holds without a witness.
 
 ---
 

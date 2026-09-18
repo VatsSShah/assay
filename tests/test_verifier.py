@@ -11,8 +11,14 @@ from pathlib import Path
 from .helpers import (ROOT, MANIFESTS, LEGACY, V, canary_finding, first_fired_canary,
                       legacy, load, mutate, reference, reseal, synthetic_manifest)
 
+#: The levels an ordinary, unwitnessed manifest can reach offline. `witnessed_egress` is
+#: deliberately NOT here: it needs a signature from a party the submitter does not control, so a
+#: document that reaches every level on this list has still not reached that one.
 ALL_LEVELS = ["format_valid", "internally_consistent", "canary_correspondence_verified",
               "catalog_bound", "run_complete"]
+
+#: The full published vocabulary, which `assay-verify levels` must print.
+PUBLISHED_LEVELS = ALL_LEVELS + ["witnessed_egress"]
 
 
 class ShippedManifests(unittest.TestCase):
@@ -406,7 +412,7 @@ class CommandLine(unittest.TestCase):
         r = self._run("levels")
         self.assertEqual(r.returncode, 0)
         payload = json.loads(r.stdout)
-        self.assertEqual(payload["verifiable_here"], ALL_LEVELS)
+        self.assertEqual(payload["verifiable_here"], PUBLISHED_LEVELS)
         self.assertIn("maintainer_attested", payload["out_of_scope_for_this_tool"])
 
 

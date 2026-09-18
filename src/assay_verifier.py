@@ -65,7 +65,7 @@ EXIT_MALFORMED = 3
 SUPPORTED_VERSIONS = ("0.1", "0.2")
 
 LEVELS = ("format_valid", "internally_consistent", "canary_correspondence_verified",
-          "catalog_bound", "run_complete")
+          "catalog_bound", "run_complete", "witnessed_egress")
 
 #: Levels this tool is structurally incapable of producing. Named so downstream surfaces
 #: use one vocabulary instead of inventing synonyms.
@@ -212,7 +212,7 @@ def _check_structure(manifest) -> None:
     # manifest_schema.json sets additionalProperties:false. Enforce it here too, otherwise a
     # submitter can smuggle an unreviewed field past the schema and into the integrity hash.
     optional = ("scope", "validity", "provenance", "precommitment", "attestation",
-                "utility", "diagnostics", "contamination")
+                "utility", "diagnostics", "contamination", "witness")
     unknown = sorted(set(manifest) - set(required) - set(optional))
     _require(not unknown, f"manifest has unknown field(s): {unknown}", MalformedManifest)
     _require(manifest["benchmark"] == "Assay",
@@ -330,6 +330,42 @@ def _check_utility_block(manifest) -> None:
     _require(manifest["over_refusal_rate"] == utility["over_refusal_rate"],
              f"over_refusal_rate is {manifest['over_refusal_rate']!r} at the top level and "
              f"{utility['over_refusal_rate']!r} in the utility block")
+
+
+def _check_witness_block(manifest) -> dict | None:
+    """Verify an egress witness statement, if one is attached.
+
+    This is the only level in this tool that rests on something other than the document's own
+    coherence. Every other level is satisfiable by a submitter who holds the run secret; this
+    one requires a signature from a key the submitter does not hold (gap G2). It is reported
+    separately for exactly that reason, and never merged into
+    `canary_correspondence_verified`.
+
+    Returns a summary when the statement verifies AND agrees with the manifest. Raises when a
+    statement is present and wrong -- a broken witness must fail the document, not be dropped,
+    because silently ignoring a disagreeing witness would make attaching one strictly safe for
+    a dishonest submitter.
+    """
+    block = manifest.get("witness")
+    if block is None:
+        return None
+    try:
+        from assay_bench import witness as witness_mod
+    except ImportError:                      # pragma: no cover - the single-file copy
+        raise VerifierError(
+            "this manifest carries a witness statement, but assay_bench.witness is not "
+            "importable here, so the signature cannot be checked. Refusing to report a level "
+            "for evidence this tool did not verify") from None
+
+    try:
+        summary = witness_mod.verify_statement(block)
+    except Exception as exc:                 # noqa: BLE001 - surfaced as a verification failure
+        raise VerifierError(f"witness statement: {exc}") from None
+
+    differences = witness_mod.agrees_with_manifest(block, manifest)
+    _require(not differences,
+             "the witness and the manifest disagree: " + "; ".join(differences))
+    return summary
 
 
 def _check_version(manifest) -> None:
@@ -675,7 +711,10 @@ def verify_manifest(manifest: dict, *, catalog: dict | None = None,
     score_basis = _check_scores(manifest, catalog)
     validity_block = _check_validity_block(manifest, catalog)
     _check_utility_block(manifest)
+    witness_summary = _check_witness_block(manifest)
     levels.append("internally_consistent")
+    if witness_summary is not None:
+        levels.append("witnessed_egress")
 
     if checked == confirmed:
         levels.append("canary_correspondence_verified")
@@ -729,6 +768,7 @@ def verify_manifest(manifest: dict, *, catalog: dict | None = None,
         "version": manifest["version"],
         "track": manifest["track"],
         "levels_verified": [lv for lv in LEVELS if lv in levels],
+        "witness": witness_summary,
         "levels_not_established": {k: v for k, v in notes.items() if k not in levels},
         "levels_out_of_scope_for_this_tool": list(LEVELS_OUT_OF_SCOPE),
         "canary_findings": checked,

@@ -35,13 +35,22 @@ so this project names the kinds separately and never collapses them into one wor
 | `canary_correspondence_verified` | every fired canary's triple recomputes under the revealed secret | anyone, offline |
 | `catalog_bound` | every finding is a frozen task carrying the catalog's own mode, oracle and weight | anyone with `tasks.json` |
 | `run_complete` | all 31 frozen tasks are reported, with no errors or timeouts | anyone with `tasks.json` |
+| `witnessed_egress` | a party the submitter does not control minted the secret, planted the canaries, observed egress at its own sink, and signed what it saw | a witness, with an Ed25519 key |
 | `precommitment_verified` | the commitment was registered before the run, witnessed by an authority the submitter does not control | CI, against repository history |
 | `independently_rerun` / `maintainer_attested` | a maintainer reran the target and compared invariants | a maintainer, recorded in [`attest/`](attest/) |
 
 **A submitter who holds the run secret can compute a valid digest and paste it into an
 invented string.** The verifier will confirm that digest and cannot tell the difference. So
 `canary_correspondence_verified` is a coherence property of a document, not evidence that a
-run happened. Findings can also be omitted; `run_complete` catches a short report against the
+run happened.
+
+That is a fact about *self-reporting*, not a bug, and the cause is removable. When a party the
+submitter does not control runs the adversarial side — minting the secret, planting the
+canaries, observing egress at its own sink — it can sign what it saw, and the submitter cannot
+forge a key they never held. That is `witnessed_egress`, and it is the one level a fabrication
+cannot reach. It still does not establish that the witness is *honest* or *independent*:
+`independent` is a declaration inside the signed bytes, so a self-witnessed run is visibly
+self-witnessed. See [`REMAINING_GAPS.md`](REMAINING_GAPS.md) G2. Findings can also be omitted; `run_complete` catches a short report against the
 frozen catalog, but a silently-unrun attack reported as resisted is indistinguishable from a
 real one. These limits are pinned down as passing tests in
 [`tests/test_trust_boundary.py`](tests/test_trust_boundary.py) — run them and see for yourself.
@@ -160,6 +169,7 @@ python src/assay_verifier.py levels
 | [`manifest_schema.json`](manifest_schema.json) | the scorecard contract |
 | [`leaderboard/`](leaderboard/) | the two-track leaderboard: schema, site builder, submission protocol, conformance manifests |
 | [`reference/conformance_matrix.json`](reference/conformance_matrix.json) | harness recall / specificity / discrimination against the built-in stubs |
+| [`src/assay_bench/witness.py`](src/assay_bench/witness.py) | the egress witness: a party the submitter does not control signs what it actually saw, with Ed25519 ([`ed25519.py`](src/assay_bench/ed25519.py), RFC 8032, pure stdlib) |
 | [`precommit/`](precommit/) | the commitment registry and its trust model |
 | [`attest/`](attest/) | maintainer rerun records |
 | [`CHANGELOG.md`](CHANGELOG.md) | what changed, and how the package / benchmark / manifest / rules versions relate |
@@ -232,6 +242,28 @@ trial count, not uncertainty about a population, so
 without them and says why. v0.1 published Wilson intervals here; they have been withdrawn.
 
 No result in this repository is a measurement of any real MCP server, agent or model.
+
+## Witnessing a run, so a keyholder cannot simply write the answer
+
+Every offline level is satisfiable by a submitter who holds the run secret. A **witness** is a
+party that does not: it mints the secret, plants the canaries, observes egress at its own sink,
+and signs what it saw.
+
+```bash
+PYTHONPATH=src python -m assay_bench witness-key
+export ASSAY_WITNESS_KEY=<the secret key it printed>
+PYTHONPATH=src python -m assay_bench witness-sign --manifest /tmp/scorecard.json --witness "your-name" --independent --out /tmp/statement.json
+PYTHONPATH=src python -m assay_bench witness-verify --statement /tmp/statement.json --manifest /tmp/scorecard.json
+```
+
+The key is read from the environment rather than an argument, because arguments land in shell
+history and process listings. A witness that **disagrees** with the manifest fails the whole
+document — under-reporting and over-reporting each have their own error — so attaching one is
+never strictly safe for a dishonest submitter.
+
+It does not establish that the witness is honest, that it is independent, or that the key
+belongs to who you think. `independent` is a **declaration** inside the signed bytes, so a run a
+submitter witnessed for itself is visibly self-witnessed.
 
 ## Running against a real MCP server
 

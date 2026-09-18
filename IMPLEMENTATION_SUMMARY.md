@@ -137,7 +137,7 @@ stub — is replaced by `conformance_matrix.json`, which reports recall, specifi
 discrimination, **omits the intervals**, and carries a field explaining why. The old file is kept
 at `tests/fixtures/legacy_v0_1/` as evidence.
 
-## 7. Tests: 7 → 503, all standard library
+## 7. Tests: 7 → 554, all standard library
 
 The v0.1 suite was 7 pytest tests. `python -m unittest discover` reported `Ran 0 tests … OK` — a
 green result that executed nothing — and pytest could not be installed in the audit environment,

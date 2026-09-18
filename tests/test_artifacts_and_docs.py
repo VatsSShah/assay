@@ -283,6 +283,14 @@ class ExecutableDocumentation(unittest.TestCase):
         "python src/assay_verifier.py verify /tmp/yours.json": (
             "verifies the manifest the command above would produce, so it cannot run without a "
             "third-party server either; the same verification runs on every shipped manifest"),
+        'PYTHONPATH=src python -m assay_bench witness-sign --manifest /tmp/scorecard.json --witness "your-name" --independent --out /tmp/statement.json': (
+            "needs $ASSAY_WITNESS_KEY, which is deliberately not a command-line argument and "
+            "must never be committed; tests/test_witness.py drives the same signing path with "
+            "a generated key, and the CLI's own no-key error is asserted there"),
+        "PYTHONPATH=src python -m assay_bench witness-verify --statement /tmp/statement.json --manifest /tmp/scorecard.json": (
+            "verifies the statement the command above would produce, so it cannot run without "
+            "a signing key either; the same verification runs over generated statements in "
+            "tests/test_witness.py"),
         "bash demo/reset.sh": "covered by tests/test_demo.py",
         "bash demo/run_demo.sh": "covered by tests/test_demo.py",
         "ASSAY_DEMO_PAUSE=1.1 bash demo/run_demo.sh": (
