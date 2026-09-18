@@ -7,30 +7,77 @@ without the gap closing.
 
 ---
 
-## G1 — No real MCP adapter exists. Nothing has been scored against a real system.
+## G1 — Real MCP: closed for Mode A, open for Mode B
 
-**Status: open. The single most important limitation.**
+**Status: Mode A closed. Mode B remains open, and is now the single most important
+limitation.**
 
-The runner drives an adapter; the only adapters that exist are three deterministic in-process
-conformance stubs. There is no MCP transport implementation, no client, and no path that touches
-a real server, agent or model. Every number in this repository is a property of the harness and
-its own stubs.
+At baseline the only adapters were three deterministic in-process stubs. Nothing crossed a
+process boundary, spoke a wire protocol, or could be pointed at software the harness did not
+import, so every number was a property of the harness talking to itself.
 
-What was built toward it: the adapter interface (`assay_bench/adapters/__init__.py`) declares
-capabilities including `is_real_target`, which the runner records in provenance, the verifier
-surfaces, `badge.py` refuses to badge, and the leaderboard displays. The seam is real and tested;
-what plugs into it is not written.
+### What shipped
 
-**Why it was not attempted here.** A stub with a persuasive name would be worse than the gap.
-Implementing a real adapter means MCP transport, session lifecycle, tool discovery, a defined
-egress capture boundary, and a way to establish that the thing on the other end is what the
-manifest says it is — none of which can be tested honestly in an environment with no network and
-no MCP server to point at.
+`assay_bench.mcp` is a real MCP implementation, stdlib-only:
 
-**What would close it:** an adapter with `is_real_target=True`, tested against a locally-run
-open-source vulnerable MCP server (`corpus/README.md` lists candidates), plus a defined answer to
-target identity — because `target_fingerprint` currently fingerprints the *adapter's declared
-material*, not the remote system.
+- `jsonrpc.py` — JSON-RPC 2.0 framing with a strict decoder (a lenient one would let a
+  non-compliant server look compliant, which is what the Mode-A tasks exist to detect);
+- `client.py` — the real `initialize` handshake with protocol-version negotiation,
+  `tools/list`, `tools/call`, over **stdio** (subprocess, newline-delimited frames, deadline
+  enforced so a silent server cannot wedge a run) and **Streamable HTTP** (including SSE
+  bodies), recording what it saw on the wire;
+- `server.py` — a server framework with security posture as a parameter;
+- `assay_bench.servers.reference` — two real MCP servers, `insecure` and `hardened`, as
+  separate processes. One program, two postures, so a score difference between them cannot
+  come from their being two different programs (a test asserts the handlers are the same code
+  objects).
+
+`assay_bench.adapters.mcp_probe.MCPServerProbe` is the Mode-A adapter, `is_real_target=True`.
+It decides all three Mode-A tasks from what it observed over a socket: M18 from whether an
+anonymous `tools/list` returned tools, M17 from whether the server served a request carrying a
+foreign `Origin` and a rebound `Host`, M6 from whether the server acted on an argument carrying
+shell metacharacters.
+
+    assay run --target mcp-insecure  --track server --trials 5 --out /tmp/insecure.json
+    assay run --target mcp-hardened  --track server --trials 5 --out /tmp/hardened.json
+    assay run --target-url https://your-server.example/mcp --target-token "$TOKEN" --track server
+
+The last form is a genuine third-party measurement and is labelled as one
+(`target.third_party`).
+
+### Interoperability, so this is not our client agreeing with our server
+
+`tests/test_mcp_interop.py` stands this client up against a server built with the **official
+`mcp` SDK** and drives the handshake, negotiation, `tools/list` and `tools/call`. The SDK is
+never a dependency of this package: CI installs it into a throwaway environment and the runtime
+stays stdlib-only. The CI job **fails if the check skips**, because a green run with the one
+external check silently skipped is the kind of green that means nothing.
+
+### What Mode A against these servers does and does not establish
+
+It establishes that the protocol facts in the manifest were observed by a client over a socket
+against a separate process — a real handshake, real HTTP status codes, real refusals. The
+insecure server scores `server_posture >= 0.0` and the hardened one `server_posture >= 100.0`,
+and the two are told apart by observation alone.
+
+It does not establish a measurement of third-party software: these servers are shipped here.
+`target.third_party` is False for them and True only when an operator points the adapter at
+something else.
+
+### What is still open: Mode B
+
+28 of the 31 tasks are Mode B: they poison a surface and score what an *agent* does with it.
+That needs an agent under test — something that reads a poisoned tool description and decides.
+No such target exists here, and none can be written honestly without a model to drive.
+
+This is now enforced rather than described. `Capabilities` carries
+`drives_agent_under_test` / `drives_server_under_test`; the server probe declares the second
+only, so every Mode-B task is reported `unsupported` with a stated reason, the run is `partial`,
+the lower bound charges every undecided task at full weight, and `badge.py` refuses it. **A
+real-server run cannot be made to look like a full benchmark result.**
+
+**What would close it:** an adapter driving a real agent (an LLM with MCP tool access) against
+the adversarial surface, with a defined egress capture boundary.
 
 ---
 
@@ -55,26 +102,45 @@ Omission can never raise that number: dropping a fully-exploited task leaves it 
 dropping any task that resisted strictly lowers it. Cherry-picking therefore gains nothing. That
 is a smaller claim than detection, and it is the one that holds.
 
-**What would reduce it:** a trusted execution path, or evidence from the target side (a signed
-egress log from an instrumented server). Both are large and neither is planned here.
+**What would reduce it, and the first piece that now exists.** The reductions named are a
+trusted execution path or evidence from the target side. The Mode-A path now has the second in
+embryo: the reference servers keep their own action log, written by the code that performs an
+action rather than by the client that asked for it, and `MCPServerProbe` **cross-checks** its
+own observation against it. A disagreement makes the trial inconclusive instead of letting
+either side win — a test drives exactly that case.
+
+This is honest about its own scope. It only applies where the operator controls the server, it
+is not signed, and a submitter who controls both sides controls both accounts. It reduces
+nothing for a Mode-B submission, which is where the fabrication concern actually bites. The
+general problem stands.
 
 ---
 
-## G3 — No PyPI release; `pipx run assay-bench` was removed, not fixed
+## G3 — Not on PyPI. Now confirmed against the public index, not merely unverified.
 
-**Status: blocked on an owner decision.**
+**Status: checked and negative. Publishing is an owner decision.**
 
-PyPI is unreachable from the audit environment (503 through the egress proxy; `pip download`
-finds no distributions), so the audit could not confirm whether `assay-bench` is published.
-Supporting evidence that it is not: the repository has no tags and no GitHub releases.
+The earlier audit could not reach PyPI (503 through the egress proxy) and therefore said only
+that publication was unconfirmed. PyPI is reachable from this session, so the check was run:
 
-Per the operating rule not to claim a publication succeeded without checking the public index,
-**nothing was published and nothing is claimed.** The README now documents `pip install -e .`,
-which works and is tested end to end.
+| query | result | date |
+|---|---|---|
+| `https://pypi.org/pypi/assay-bench/json` | **404 — the name is unregistered** | 2026-09-18 |
+| `https://pypi.org/pypi/assay/json` | **200 — taken by an unrelated project** | 2026-09-18 |
 
-**Owner decision:** whether to publish. If yes, it needs the project's real release process,
-owner credentials, a tag, and verification against the public index plus a fresh install in a
-clean environment — none of which an audit should do unilaterally.
+So: **`assay-bench` is not published**, and no surface in this repository claims it is.
+
+**The name `assay` belongs to someone else.** It is Brandon Rhodes' "Future testing framework"
+(`github.com/brandon-rhodes/python-skyfield`), entirely unrelated to this project. Anyone who
+types `pip install assay` expecting this benchmark installs a different package. No document
+here tells them to, and a test now fails the build if one starts to — the failure mode is a
+user running a stranger's code because of a line in our README, which is worse than an
+unpublished package.
+
+**Owner decision:** whether to publish `assay-bench`. If yes it needs the project's real
+release process, owner credentials, a tag, and verification against the public index plus a
+fresh install in a clean environment. None of that is an audit's to do unilaterally, and the
+rule stands: do not claim PyPI availability until a fresh public install works.
 
 ---
 
@@ -162,15 +228,28 @@ on it.
 
 ---
 
-## G10 — Target fingerprinting does not identify a remote system
+## G10 — Target fingerprinting now describes a remote server
 
-**Status: open, and scoped by G1.**
+**Status: closed for what a fingerprint can establish; the residual limit is stated.**
 
-`target_fingerprint` is now precisely specified — a SHA-256 over a canonical serialisation of a
-named field list, with the pre-image republished so anyone can recompute it — and it is tested
-for stability and for sensitivity to each contributing field. But it fingerprints the *adapter's
-declared material*. With only in-process stubs that is exactly right; with a real remote target
-it would not be enough to establish identity. Designing that belongs with G1.
+At baseline `target_fingerprint` hashed the *adapter's declared material*. With only in-process
+stubs that was exactly right and completely uninformative about a remote system.
+
+`MCPServerProbe.fingerprint_material()` now returns what the **server** advertised, obtained by
+connecting to it: its `serverInfo` name and version, the negotiated protocol revision, its
+declared capabilities, and, per tool, the name with SHA-256 digests of the description and the
+input schema. The pre-image is republished in the manifest, so anyone who can reach the same
+endpoint recomputes the fingerprint by hand. Tested: two different servers fingerprint
+differently, a changed tool description changes it, and two sessions to the same server agree.
+Fingerprinting an unreachable server is refused outright rather than producing a stable
+identity for a failure.
+
+**The residual limit, which no hash closes.** This identifies an *advertised identity and tool
+surface*, not a host. Two deployments of the same software are indistinguishable by it, a
+server can advertise whatever it likes, and nothing here authenticates the endpoint. That is a
+property of asking a server who it is. Establishing that the thing answering is the product
+someone names it after needs transport authentication and an out-of-band identity claim, and
+belongs with whoever operates the target.
 
 ---
 

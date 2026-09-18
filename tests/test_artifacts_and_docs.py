@@ -158,6 +158,90 @@ class ConformanceMatrixHonesty(unittest.TestCase):
         self.assertEqual(len(self.matrix["rows"]), 31)
 
 
+class InstallInstructionsPointAtThisProject(unittest.TestCase):
+    """No document may tell a reader to install a package that is not this one.
+
+    `assay` on PyPI is an unrelated testing framework by a different author, and `assay-bench`
+    is unregistered (both checked against the public index; see REMAINING_GAPS G3). A README
+    line saying `pip install assay` would send readers to a stranger's code, which is a worse
+    outcome than having no release at all.
+
+    Two scopes, because they carry different risk. Inside a fenced code block the text is
+    something a reader copies and runs, so it is checked in *every* tracked document including
+    the audit records. In prose the same string may be a description of a withdrawn claim,
+    which the audit trail must be able to quote; those documents are named below with a reason
+    rather than being matched by a heuristic.
+    """
+
+    #: Documents whose job is to record what was withdrawn, so they must be able to quote it in
+    #: prose. None of them may carry it in a runnable code block.
+    RECORDS = {"REMAINING_GAPS.md", "CHANGELOG.md", "BASELINE_AUDIT.md", "ISSUE_1_TRIAGE.md",
+               "ISSUE_1_RESPONSE.md", "CLAIM_EVIDENCE_MATRIX.md"}
+
+    #: `pip install assay` -- the unrelated project. The negative lookahead keeps `assay-bench`
+    #: out of this pattern; it has its own test.
+    WRONG_PACKAGE = re.compile(r"\b(pip|pipx|uv)\s+(install|run)\s+(-\S+\s+)*assay\b(?!-)")
+    #: `pip install assay-bench` -- this project, from an index it is not published to.
+    UNPUBLISHED = re.compile(r"\b(pip|pipx|uv)\s+(install|run)\s+(-\S+\s+)*assay-bench\b")
+
+    def _docs(self):
+        require_source_checkout(self)
+        listed = subprocess.run(["git", "ls-files", "*.md"], cwd=ROOT, capture_output=True,
+                                text=True).stdout.split()
+        return [ROOT / name for name in listed]
+
+    @staticmethod
+    def _code_block_lines(text: str):
+        """Yield only the lines inside fenced code blocks: what a reader copies and runs."""
+        inside = False
+        for line in text.splitlines():
+            if line.lstrip().startswith("```"):
+                inside = not inside
+                continue
+            if inside:
+                yield line
+
+    def test_no_runnable_block_anywhere_installs_the_wrong_or_unpublished_package(self):
+        for path in self._docs():
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            for line in self._code_block_lines(text):
+                with self.subTest(doc=path.name, line=line.strip()[:70]):
+                    self.assertIsNone(self.WRONG_PACKAGE.search(line),
+                                      f"{path.name} has a runnable line installing PyPI's "
+                                      f"`assay`, an unrelated project by another author")
+                    self.assertIsNone(self.UNPUBLISHED.search(line),
+                                      f"{path.name} has a runnable line installing "
+                                      f"assay-bench from an index it is not published to")
+
+    def test_no_user_facing_document_even_mentions_installing_it_that_way(self):
+        for path in self._docs():
+            if path.name in self.RECORDS:
+                continue
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            for line in text.splitlines():
+                with self.subTest(doc=path.name, line=line.strip()[:70]):
+                    self.assertIsNone(self.WRONG_PACKAGE.search(line),
+                                      f"{path.name} points a reader at PyPI's `assay`")
+                    self.assertIsNone(self.UNPUBLISHED.search(line),
+                                      f"{path.name} presents assay-bench as installable from "
+                                      f"an index it is not published to")
+
+    def test_the_record_documents_state_why_they_are_allowed_to_mention_it(self):
+        """An exemption nobody can see is indistinguishable from an oversight."""
+        for name in self.RECORDS:
+            matches = [p for p in self._docs() if p.name == name]
+            if not matches:
+                continue
+            text = matches[0].read_text(encoding="utf-8", errors="ignore")
+            if not (self.WRONG_PACKAGE.search(text) or self.UNPUBLISHED.search(text)):
+                continue
+            with self.subTest(doc=name):
+                self.assertTrue(
+                    any(word in text.lower() for word in ("withdraw", "removed", "unrelated",
+                                                          "not published", "does not exist")),
+                    f"{name} mentions the install line without saying it was withdrawn")
+
+
 class ExecutableDocumentation(unittest.TestCase):
     """Every fenced bash command in the docs is extracted and run. A documented command
     that does not exist is the defect that started this audit."""
@@ -185,13 +269,20 @@ class ExecutableDocumentation(unittest.TestCase):
             "optional third-party runner, deliberately not a dependency; the same tests run "
             "under unittest, which is what CI's core job uses"),
         "python -m build": "requires the 'build' package; covered by test_packaging",
-        "pip install assay-bench": "requires a PyPI release that does not exist yet",
         "git add precommit/registry/<run-id>.json": "illustrative git usage",
         "git commit -m 'precommit: <target>'": "illustrative git usage",
         "git push": "illustrative git usage",
         "PYTHONPATH=src python -m assay_bench precommit --target vulnerable --trials 25 --secret-out /tmp/run.secret": (
             "writes a registry record into the repository, so running it here would dirty the "
             "tree; tests/test_precommit.py drives the same CLI against a temporary registry"),
+        "PYTHONPATH=src python -m assay_bench run --target-url https://your-server.example/mcp --track server --out /tmp/yours.json": (
+            "needs a third-party MCP server, which by definition this repository does not "
+            "ship; tests/test_mcp_probe.py drives the same code path against a real server on "
+            "loopback, and tests/test_mcp_interop.py against a server built with the official "
+            "MCP SDK"),
+        "python src/assay_verifier.py verify /tmp/yours.json": (
+            "verifies the manifest the command above would produce, so it cannot run without a "
+            "third-party server either; the same verification runs on every shipped manifest"),
         "bash demo/reset.sh": "covered by tests/test_demo.py",
         "bash demo/run_demo.sh": "covered by tests/test_demo.py",
         "ASSAY_DEMO_PAUSE=1.1 bash demo/run_demo.sh": (
@@ -199,6 +290,38 @@ class ExecutableDocumentation(unittest.TestCase):
             "outcome is identical"),
         "bash demo/record_video.sh": "needs a browser and encoder; covered by test_demo",
     }
+
+    def test_no_excuse_outlives_the_command_it_excuses(self):
+        """A stale entry in ALLOWED_UNRUN silently pre-authorises a line that was removed.
+
+        `pip install assay-bench` sat here after the line was withdrawn from every document, so
+        reintroducing an install instruction for an unpublished package would have passed the
+        build unremarked. An excuse must name a command the documentation actually contains.
+        """
+        documented = set()
+        for name in self.DOCS:
+            doc = ROOT / name
+            if doc.is_file():
+                documented.update(self._commands(doc))
+        # Some excused commands live outside DOCS: in other markdown (the runbook, the
+        # precommit README), or in CI and the PR template, which are instructions to a
+        # contributor just as much as a README is. All of them count as "still documented";
+        # anything in none of them is dead.
+        for name in ("demo/DEMO_RUNBOOK.md", "precommit/README.md", "README.md"):
+            doc = ROOT / name
+            if doc.is_file():
+                documented.update(self._commands(doc))
+        elsewhere = ""
+        for name in (".github/workflows/ci.yml", ".github/PULL_REQUEST_TEMPLATE.md"):
+            path = ROOT / name
+            if path.is_file():
+                elsewhere += path.read_text(encoding="utf-8")
+        for excused in sorted(self.ALLOWED_UNRUN):
+            with self.subTest(command=excused):
+                self.assertTrue(excused in documented or excused in elsewhere,
+                                f"ALLOWED_UNRUN excuses {excused!r}, which no document, "
+                                f"workflow or template contains any more; remove the excuse "
+                                f"rather than leaving it to pre-authorise the line coming back")
 
     def _commands(self, doc: Path):
         text = doc.read_text(encoding="utf-8")

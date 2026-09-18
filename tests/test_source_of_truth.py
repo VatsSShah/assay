@@ -71,9 +71,12 @@ class ExecutionContracts(unittest.TestCase):
         from assay_bench.adapters import Capabilities, supports
 
         oracle_only = Capabilities(emits_network_egress=True, emits_tool_calls=True,
-                                   exposes_protocol_facts=True)
+                                   exposes_protocol_facts=True,
+                                   drives_agent_under_test=True, drives_server_under_test=True)
         with_decoder = Capabilities(emits_network_egress=True, emits_tool_calls=True,
-                                    exposes_protocol_facts=True, decodes_images=True)
+                                    exposes_protocol_facts=True, decodes_images=True,
+                                    drives_agent_under_test=True,
+                                    drives_server_under_test=True)
         for task in CATALOG:
             needs_decoder = "decodes_images" in task.execution["requires_capabilities"]
             with self.subTest(task=task.id):

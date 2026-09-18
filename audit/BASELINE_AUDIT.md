@@ -106,7 +106,7 @@ Commands were extracted from `README.md`, `SPEC.md`, `CONTRIBUTING.md`, `corpus/
 | 10 | `python -m unittest discover` | (diagnostic) | **0** | `Ran 0 tests ... OK` — **a green result that executed nothing** |
 | 11 | `python -m unittest discover -s tests` | (diagnostic) | 1 | `Ran 1 test … FAILED (errors=1)` — the import of `pytest` fails |
 | 12 | `python -m benchmarks.assay reference` | **SPEC.md:116, corpus/README.md:15** | — | **no such module anywhere in the tree or history** |
-| 13 | `pipx run assay-bench <scorecard>` | README:67 | — | not executable here; no PyPI reachability, and no GitHub release/tag exists |
+| 13 | `pipx run assay-bench <scorecard>` | README:67 | — | not executable here; no PyPI reachability at baseline, and no GitHub release/tag exists. **Later checked** (2026-09-18, from an environment that does reach PyPI): `assay-bench` returns 404 — unregistered — so the command could never have worked. The line was removed, not deferred. `assay` returns 200 and is an unrelated project by another author. See `REMAINING_GAPS.md` G3. |
 
 Items **9, 10, 12 and 13** are the executable defects found at baseline. Item 10 is the
 diagnostic trap the brief anticipated: run from the repository root, `unittest` discovery

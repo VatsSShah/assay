@@ -46,28 +46,89 @@ def _read_json(path: str, what: str) -> Any:
 
 # ------------------------------------------------------------------------------ run
 
-def cmd_run(args) -> int:
+def _build_target(args):
+    """Resolve the requested target to an adapter and a teardown callable.
+
+    Four kinds, and the manifest records which: the three in-process conformance stubs, a
+    reference MCP server this repository starts on loopback, and someone else's MCP server
+    reached over HTTP or stdio. Only the last is a third-party measurement, and only it is
+    labelled as one.
+    """
     from .adapters.conformance import build as build_builtin
+    from .errors import UsageError
+
+    remote = [name for name in ("target_url", "target_command") if getattr(args, name, None)]
+    if len(remote) > 1:
+        raise UsageError("give at most one of --target-url and --target-command")
+
+    if getattr(args, "target_url", None) or getattr(args, "target_command", None):
+        from .adapters.mcp_probe import MCPServerProbe
+
+        command = None
+        if getattr(args, "target_command", None):
+            import shlex
+            command = shlex.split(args.target_command)
+        adapter = MCPServerProbe(url=getattr(args, "target_url", None), command=command,
+                                 token=getattr(args, "target_token", "") or "",
+                                 timeout=args.timeout,
+                                 # A target the operator pointed us at is not ours. Saying so
+                                 # is what separates a measurement from mechanism validation.
+                                 third_party=True)
+        return adapter, (lambda: None), (
+            "third-party MCP server supplied by the operator; protocol facts were observed "
+            "over the wire by this harness")
+
+    if args.target in ("mcp-insecure", "mcp-hardened"):
+        from .adapters.mcp_probe import build as build_probe
+
+        posture = args.target.split("-", 1)[1]
+        adapter, stop = build_probe(posture, timeout=args.timeout)
+        return adapter, stop, (
+            f"reference MCP server ({posture}) shipped by this repository, started on loopback "
+            f"and driven over real HTTP; a real MCP server, not third-party software")
+
+    return build_builtin(args.target), (lambda: None), ""
+
+
+def cmd_run(args) -> int:
     from .catalog import load_catalog
     from .runner import run
 
     catalog = load_catalog(args.tasks)
-    adapter = build_builtin(args.target)
+    adapter, stop_target, default_note = _build_target(args)
     command = "assay run " + " ".join(sys.argv[2:])
-    manifest = run(adapter, catalog=catalog, track=args.track, trials=args.trials,
-                   run_secret=args.run_secret, task_ids=args.task or None,
-                   timeout_s=args.timeout, command=command, target_note=args.note or "",
-                   run_id=args.run_id, trials_out=args.trials_out)
+    try:
+        manifest = run(adapter, catalog=catalog, track=args.track, trials=args.trials,
+                       run_secret=args.run_secret, task_ids=args.task or None,
+                       timeout_s=args.timeout, command=command,
+                       target_note=args.note or default_note,
+                       run_id=args.run_id, trials_out=args.trials_out)
+    finally:
+        stop_target()
     if args.trials_out:
         print(f"wrote {args.trials_out}: raw per-trial records")
     if args.out:
         _write(Path(args.out), manifest)
         caps = adapter.capabilities()
+        completion = manifest["scope"]["completion"]
+        validity = manifest["validity"]
+        # For a partial run the headline treats every undecided task as resisted, so quoting it
+        # alone would let a run that decided three tasks read as a near-perfect score. The
+        # lower bound is the number that survives the tasks nobody answered, so it is what the
+        # summary leads with when the run is partial.
+        if completion == "complete":
+            headline = (f"agent={manifest['agent_resistance_score']} "
+                        f"server={manifest['server_posture_score']}")
+        else:
+            decided = len(catalog) - len(validity["assessment"]["inconclusive_tasks"])
+            headline = (f"PARTIAL ({decided}/{len(catalog)} tasks decided) -- cite the lower "
+                        f"bound: agent>={validity['agent_resistance_lower_bound']} "
+                        f"server>={validity['server_posture_lower_bound']} "
+                        f"(headline agent={manifest['agent_resistance_score']} "
+                        f"server={manifest['server_posture_score']} assumes every undecided "
+                        f"task resisted)")
         print(f"wrote {args.out}: {len(manifest['findings'])}/{len(catalog)} tasks, "
-              f"agent={manifest['agent_resistance_score']} "
-              f"server={manifest['server_posture_score']} "
-              f"completion={manifest['scope']['completion']} "
-              f"real_target={caps.is_real_target}")
+              f"{headline} real_target={caps.is_real_target}")
     else:
         _print(manifest)
     return EXIT_OK
@@ -332,7 +393,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     r = sub.add_parser("run", help="run the frozen task set against a target")
     r.add_argument("--target", default="vulnerable",
-                   help="built-in conformance target: vulnerable, hardened, mixed")
+                   help="built-in target: the in-process conformance stubs vulnerable, "
+                        "hardened, mixed; or mcp-insecure / mcp-hardened, which start this "
+                        "repository's reference MCP server on loopback and drive it over "
+                        "real HTTP")
+    r.add_argument("--target-url",
+                   help="probe a real MCP server at this Streamable HTTP endpoint. The run is "
+                        "a third-party measurement and is labelled as one.")
+    r.add_argument("--target-command",
+                   help="probe a real MCP server started by this command, over stdio. Note "
+                        "that the transport-level tasks M17 and M18 are HTTP properties and "
+                        "are reported unsupported over stdio, never as resisted.")
+    r.add_argument("--target-token", help="bearer token presented to --target-url")
     r.add_argument("--track", default="agent", choices=["agent", "server"])
     r.add_argument("--trials", type=int, default=25)
     r.add_argument("--timeout", type=float, default=10.0)

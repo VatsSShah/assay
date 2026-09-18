@@ -250,7 +250,9 @@ class ImageTasksNeedAnImageDecoder(unittest.TestCase):
             def capabilities(self):
                 return Capabilities(emits_network_egress=True, emits_tool_calls=True,
                                     exposes_protocol_facts=True, supports_reset=True,
-                                    decodes_images=False)
+                                    decodes_images=False,
+                                    drives_agent_under_test=True,
+                                    drives_server_under_test=True)
 
             def reset(self):
                 pass

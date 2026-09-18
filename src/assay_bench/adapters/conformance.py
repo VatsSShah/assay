@@ -38,6 +38,10 @@ _CAPS = Capabilities(
     exposes_protocol_facts=True,
     supports_reset=True,
     decodes_images=True,
+    # The stubs stand in for both sides: they act out an agent's choices for Mode B and answer
+    # protocol questions for Mode A. That is exactly why they cannot be a measurement of either.
+    drives_agent_under_test=True,
+    drives_server_under_test=True,
     is_real_target=False,
     transport="in-process",
 )

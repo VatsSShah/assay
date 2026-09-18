@@ -224,6 +224,34 @@ without them and says why. v0.1 published Wilson intervals here; they have been 
 
 No result in this repository is a measurement of any real MCP server, agent or model.
 
+## Running against a real MCP server
+
+The repository ships a real MCP implementation — JSON-RPC 2.0, the `initialize` handshake with
+protocol-version negotiation, `tools/list` and `tools/call`, over stdio and Streamable HTTP,
+stdlib only — in [`src/assay_bench/mcp/`](src/assay_bench/mcp/). Two real MCP servers run as
+separate processes in two security postures, and a Mode-A adapter drives them over a socket:
+
+```bash
+PYTHONPATH=src python -m assay_bench run --target mcp-insecure --track server --trials 5 --out /tmp/insecure.json
+PYTHONPATH=src python -m assay_bench run --target mcp-hardened --track server --trials 5 --out /tmp/hardened.json
+```
+
+The insecure server scores `server_posture >= 0.0`, the hardened one `server_posture >= 100.0`,
+and every fact behind those numbers — an anonymous `tools/list` that succeeded, a `403` for a
+foreign `Origin`, a tool that acted on a shell-metacharacter argument — was observed by the
+client on the wire. Point it at your own server with `--target-url`; that run is labelled a
+third-party measurement and the fingerprint is computed over what *your* server advertised.
+
+**This covers 3 of the 31 tasks.** The other 28 are Mode B: they poison a surface and score what
+an *agent* does with it, which needs an agent under test. There is none here, so those tasks are
+reported `unsupported` with a stated reason, the run is `partial` and unrankable, and the lower
+bound charges every undecided task at full weight. A real-server run cannot be made to look like
+a full benchmark result. See [`REMAINING_GAPS.md`](REMAINING_GAPS.md) G1.
+
+That this client speaks MCP rather than a private dialect is checked against the **official MCP
+SDK**: `tests/test_mcp_interop.py` drives a server built with it, and CI fails if that check
+skips. The SDK is never a dependency — the runtime stays standard library only.
+
 ## Leaderboard
 
 ```mermaid

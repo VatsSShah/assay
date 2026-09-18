@@ -7,7 +7,7 @@
     "model_snapshot": null,
     "note": "built-in deterministic conformance target; this run validates the harness mechanism and is NOT a measurement of any product"
   },
-  "target_fingerprint": "f8f94e34760b3d2e",
+  "target_fingerprint": "26607cff12b2f2ca",
   "trials_per_task": 25,
   "generated_at": "2026-09-18T00:00:00+00:00",
   "harness": {
@@ -675,6 +675,8 @@
         "exposes_protocol_facts": true,
         "supports_reset": true,
         "decodes_images": true,
+        "drives_agent_under_test": true,
+        "drives_server_under_test": true,
         "is_real_target": false,
         "transport": "in-process"
       }
@@ -694,6 +696,8 @@
         "exposes_protocol_facts": true,
         "supports_reset": true,
         "decodes_images": true,
+        "drives_agent_under_test": true,
+        "drives_server_under_test": true,
         "is_real_target": false,
         "transport": "in-process"
       },
@@ -723,5 +727,5 @@
   },
   "run_secret_commitment": "fc8b64001c5fdd0f2f40fb67dae4a865a2c5bd17836676d6d5b58b7917e33717",
   "run_secret_reveal": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
-  "integrity_hash": "fb8e000d6ca99fdc55d0ab11f23cfae9fbb64fe25882cbd1bf34e95e727d6cb5"
+  "integrity_hash": "21956d28d00ceea847a29a61ca7018704f60415d88cb0034e984cf88d3f42b91"
 }

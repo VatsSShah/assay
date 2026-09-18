@@ -43,6 +43,16 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   `assay`: catalog loader, canary minting, adapter interface, three deterministic conformance
   targets, typed per-class oracle evaluators, trial loop with reset/timeout/error handling,
   provenance, manifest generation, reference regeneration.
+- `assay_bench/mcp/` — a real MCP implementation, stdlib only: JSON-RPC 2.0 with a strict
+  decoder, the `initialize` handshake with protocol-version negotiation, `tools/list` and
+  `tools/call`, over stdio (subprocess, newline-delimited frames, deadline enforced) and
+  Streamable HTTP (including SSE bodies). `assay_bench/servers/reference.py` runs two real MCP
+  servers as separate processes, insecure and hardened, as one program with a posture
+  parameter. `assay_bench/adapters/mcp_probe.py` drives them and decides all three Mode-A tasks
+  from what it observed on the wire, with `is_real_target=True`. `assay run --target-url`
+  probes someone else's server as a labelled third-party measurement.
+- Interoperability with the **official MCP SDK** is checked in `tests/test_mcp_interop.py` and
+  in its own CI job that fails if the check skips. The SDK is not a dependency.
 - `assay_bench/media.py` — a dependency-free image layer, so the six image-channel tasks are
   executed as images rather than described as them. Spec PNG writer/reader with CRC32-validated
   `tEXt` chunks, LSB steganography over the pixel data, and a QR encoder/decoder (byte mode,
@@ -69,6 +79,26 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
 
 ### Changed
 
+- **M17 was decided by the wrong protocol fact.** `PROTOCOL_PREDICATES` was keyed on names no
+  task used (`mcp_unauth_transport`, `mcp_dns_rebind`), so both protocol tasks fell through to a
+  default that read `unauthenticated_tools_list`. A server that authenticated but had no
+  DNS-rebind protection was scored as **resisting** M17, and the DNS-rebind predicate was dead
+  code. The uniform conformance stubs could not surface it because they set every fact from one
+  flag; pointing the harness at a real server did. There is now no default: an unregistered
+  attack raises, and a predicate whose facts the adapter never reported makes the trial
+  inconclusive rather than silently reading a missing fact as False.
+- **An adapter that drives a server could score Mode-B tasks.** The capability check asked only
+  which channels an adapter exposed, so a server probe emitting tool calls satisfied the canary
+  oracle and all 28 Mode-B tasks were scored against a target never shown one — a headline
+  100.0 for a run that decided three tasks. `Capabilities` now carries
+  `drives_agent_under_test` / `drives_server_under_test`, checked before the channels, and an
+  unsupported task states which requirement it failed.
+- **An unreachable target scored as resisting.** The Mode-A probe treated a refused connection
+  the same as a refusal by a live peer, so a server that was merely down was credited with
+  protecting itself. Only an answer from a live peer is evidence now; a transport failure
+  propagates and the trial is inconclusive.
+- **For a partial run the CLI leads with the lower bound**, not the headline, which assumes
+  every undecided task resisted.
 - **The six image tasks now really carry their canary through an image.** M20, M26, M27, M28,
   M29 and M30 were text simulations: the "image" was prose and the canary was pasted into that
   prose. They now attach real PNG bytes, with the plant route recorded per task as
@@ -85,7 +115,7 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   verifier, scorer, badge tool, runner package, the frozen catalog and the published schema.
 - **Scores use the frozen catalog's weight total as the denominator**, never the reported
   findings'. For a complete run this is identical, so every valid v0.1 score is unchanged.
-- **Tests: 7 → 342, standard library only.** Converted from pytest to `unittest`, so the
+- **Tests: 7 → 407, standard library only.** Converted from pytest to `unittest`, so the
   "stdlib alone" claim holds end to end and `unittest discover` no longer reports
   `Ran 0 tests ... OK`.
 - `license = { file = "LICENSE" }` → SPDX `license = "MIT"` with `license-files`, so builds no

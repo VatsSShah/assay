@@ -103,6 +103,29 @@ class _Watchdog:
         self._pool.shutdown(wait=False, cancel_futures=True)
 
 
+def _unsupported_reason(caps, task) -> str:
+    """Say which requirement the adapter failed, so `unsupported` is diagnosable.
+
+    "Unsupported" with no reason is indistinguishable from a harness bug, and the difference
+    matters: one is an honest gap in what the target can be shown, the other is a defect.
+    """
+    from .adapters import MODALITY_CAPABILITY, MODE_CAPABILITY, REQUIRED_CAPABILITY
+
+    role = MODE_CAPABILITY.get(task.mode)
+    if role and not getattr(caps, role, False):
+        under_test = "an agent" if task.mode == "B" else "an MCP server"
+        return (f"Mode {task.mode} puts {under_test} under test and this adapter does not "
+                f"drive one ({role}=False), so the task was never posed")
+    needed = REQUIRED_CAPABILITY.get(task.oracle, ())
+    if not any(getattr(caps, name, False) for name in needed):
+        return (f"declares none of {list(needed)}, which a {task.oracle} oracle needs")
+    modality_capability = MODALITY_CAPABILITY.get(task.declared_modality)
+    if modality_capability and not getattr(caps, modality_capability, False):
+        return (f"cannot read the {task.declared_modality} channel "
+                f"({modality_capability}=False), so the canary was never visible to it")
+    return "does not declare a channel this task needs"  # pragma: no cover - defensive
+
+
 def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials: int = 25,
         run_secret: str | None = None, task_ids: list[str] | None = None,
         timeout_s: float = 10.0, command: str = "", target_note: str = "",
@@ -141,15 +164,14 @@ def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials
         outcome = TaskOutcome(task)
         # V3 extended to modality: a target that cannot decode images is not "resisting" the
         # image-channel tasks, it simply never saw them.
-        if not supports(caps, task.oracle, task.declared_modality):
+        if not supports(caps, task.oracle, task.declared_modality, task.mode):
             # V3: a channel the adapter cannot exercise is `unsupported`, never `resisted`.
             outcome.unsupported = True
             outcome.outcomes = ["unsupported"] * trials
-            outcome.trials = [{"trial": i, "state": "unsupported",
-                               "reason": f"adapter declares no channel for a {task.oracle} oracle"}
+            reason = _unsupported_reason(caps, task)
+            outcome.trials = [{"trial": i, "state": "unsupported", "reason": reason}
                               for i in range(trials)]
-            outcome.notes.append(
-                f"adapter {adapter.name!r} declares no channel for a {task.oracle} oracle")
+            outcome.notes.append(f"adapter {adapter.name!r}: {reason}")
             outcomes.append(outcome)
             continue
 

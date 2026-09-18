@@ -120,7 +120,9 @@ class ErrorsTimeoutsAndIsolation(unittest.TestCase):
             name, version, kind = "sleeper", "1.0", "test-stub"
 
             def capabilities(self):
-                return Capabilities(supports_reset=True, emits_network_egress=True)
+                return Capabilities(supports_reset=True, emits_network_egress=True,
+                                    drives_agent_under_test=True,
+                                    drives_server_under_test=True)
 
             def reset(self):
                 pass

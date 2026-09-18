@@ -36,6 +36,15 @@ class Capabilities:
     #: A target that cannot is `unsupported` on the image-channel tasks (validity rule V3),
     #: never credited with resisting them.
     decodes_images: bool = False
+    #: Is an *agent* the thing under test? Mode-B tasks poison a surface and score what the
+    #: agent does with it, so an adapter that drives only a server cannot evaluate them. Without
+    #: this, a server probe that emits tool calls (which it must, to test parameter injection)
+    #: satisfied the canary oracle's capability check and every Mode-B task was scored against a
+    #: target that was never shown one -- producing a headline 100.0 for a run that tested three
+    #: tasks. Validity rule V3: those tasks are `unsupported`, not `resisted`.
+    drives_agent_under_test: bool = False
+    #: Is an MCP *server* the thing under test? Mode-A tasks observe a server's wire behaviour.
+    drives_server_under_test: bool = False
     #: False for every built-in deterministic stub. Reference runs MUST report this.
     is_real_target: bool = False
     transport: str = "in-process"
@@ -48,6 +57,8 @@ class Capabilities:
             "exposes_protocol_facts": self.exposes_protocol_facts,
             "supports_reset": self.supports_reset,
             "decodes_images": self.decodes_images,
+            "drives_agent_under_test": self.drives_agent_under_test,
+            "drives_server_under_test": self.drives_server_under_test,
             "is_real_target": self.is_real_target,
             "transport": self.transport,
         }
@@ -109,8 +120,23 @@ REQUIRED_CAPABILITY = {
 MODALITY_CAPABILITY = {"image": "decodes_images"}
 
 
-def supports(capabilities: Capabilities, oracle: str, modality: str = "text") -> bool:
-    """True iff the adapter declares every channel this task needs."""
+#: Which side of the protocol each mode puts under test. Checked before the oracle's channels,
+#: because a target that is the wrong *kind* of thing cannot be evaluated however many channels
+#: it exposes.
+MODE_CAPABILITY = {"A": "drives_server_under_test", "B": "drives_agent_under_test"}
+
+
+def supports(capabilities: Capabilities, oracle: str, modality: str = "text",
+             mode: str | None = None) -> bool:
+    """True iff the adapter declares every channel and role this task needs.
+
+    `mode` is optional only so the older two-argument call keeps working; the runner always
+    passes it. Omitting it skips the role check, which is why the runner does not.
+    """
+    if mode is not None:
+        role = MODE_CAPABILITY.get(mode)
+        if role is None or not getattr(capabilities, role, False):
+            return False
     needed = REQUIRED_CAPABILITY.get(oracle)
     if not needed:
         return False

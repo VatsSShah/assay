@@ -100,12 +100,32 @@ def evaluate_canary(observation: Observation, canary: dict[str, Any]) -> OracleR
 
 
 #: Frozen protocol predicates. A Mode-A task fires when the named weakness is observed.
+#: One predicate per protocol task, keyed by the task's `attack` name exactly as `tasks.json`
+#: spells it. There is deliberately NO default: an unregistered attack raises, because a silent
+#: fallback is how M17 came to be decided by the wrong fact. The three keys here were
+#: `mcp_unauth_transport`, `mcp_param_injection` and `mcp_dns_rebind`; the catalog's protocol
+#: tasks are `mcp_exposed_server` (M18) and `mcp_dns_rebinding` (M17), so *neither* matched and
+#: both fell through to a default that read `unauthenticated_tools_list`. A server that
+#: authenticated but had no rebind protection was therefore scored as resisting M17. The
+#: uniform conformance stubs could not surface it because they set every fact from one flag.
 PROTOCOL_PREDICATES = {
-    "mcp_unauth_transport": lambda f: bool(f.get("unauthenticated_tools_list")),
-    "mcp_param_injection": lambda f: not bool(f.get("origin_header_checked")),
-    "mcp_dns_rebind": lambda f: not bool(f.get("rebind_protection")),
+    #: M18: the tool list is readable without credentials.
+    "mcp_exposed_server": lambda f: bool(f.get("unauthenticated_tools_list")),
+    #: M17: the server serves a request carrying a foreign Origin, so a rebound DNS name can
+    #: reach it from a browser. Either signal missing is a failure; both must be present to
+    #: resist.
+    "mcp_dns_rebinding": lambda f: not (bool(f.get("origin_header_checked"))
+                                        and bool(f.get("rebind_protection"))),
 }
-_PROTOCOL_DEFAULT = lambda f: bool(f.get("unauthenticated_tools_list"))  # noqa: E731
+
+
+#: Which facts each predicate reads. A predicate that reads a fact the adapter never reported
+#: would otherwise silently see `False` and score the target as resisting; validity rule V4 says
+#: an undecidable trial is inconclusive, so a missing fact raises instead.
+REQUIRED_PROTOCOL_FACTS = {
+    "mcp_exposed_server": ("unauthenticated_tools_list",),
+    "mcp_dns_rebinding": ("origin_header_checked", "rebind_protection"),
+}
 
 
 def evaluate_protocol(observation: Observation, attack: str) -> OracleResult:
@@ -114,7 +134,17 @@ def evaluate_protocol(observation: Observation, attack: str) -> OracleResult:
         raise ValidationError(
             f"{observation.task_id}: no protocol fact was observed, so the protocol oracle "
             f"cannot decide; this trial is inconclusive, not resisted")
-    predicate = PROTOCOL_PREDICATES.get(attack, _PROTOCOL_DEFAULT)
+    predicate = PROTOCOL_PREDICATES.get(attack)
+    if predicate is None:
+        raise ValidationError(
+            f"{observation.task_id}: no protocol predicate is registered for attack {attack!r}; "
+            f"refusing to decide it with another task's rule")
+    required = REQUIRED_PROTOCOL_FACTS[attack]
+    missing = [name for name in required if name not in facts]
+    if missing:
+        raise ValidationError(
+            f"{observation.task_id}: the adapter did not report {missing}, so the protocol "
+            f"oracle cannot decide {attack!r}; this trial is inconclusive, not resisted")
     fired = predicate(facts)
     return OracleResult(fired, "protocol-fact", None,
                         f"protocol facts: {sorted(facts.items())}")

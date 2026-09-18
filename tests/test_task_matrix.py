@@ -57,7 +57,8 @@ class _Broken:
         # inconclusive because the adapter BROKE, not because the task was unsupported.
         return Capabilities(observes_tool_descriptions=True, emits_tool_calls=True,
                             emits_network_egress=True, exposes_protocol_facts=True,
-                            supports_reset=True, decodes_images=True)
+                            supports_reset=True, decodes_images=True,
+                            drives_agent_under_test=True, drives_server_under_test=True)
 
     def reset(self):
         pass
@@ -187,7 +188,9 @@ class InconclusiveCase(unittest.TestCase):
     def test_unsupported_tasks_are_not_credited(self):
         class ProtocolOnly(_Broken):
             def capabilities(self):
-                return Capabilities(exposes_protocol_facts=True, supports_reset=True)
+                return Capabilities(exposes_protocol_facts=True, supports_reset=True,
+                                    drives_agent_under_test=True,
+                                    drives_server_under_test=True)
 
             def run_episode(self, episode):
                 return Observation(task_id=episode.task_id, trial=episode.trial,
@@ -425,7 +428,9 @@ class EgressExcerpting(unittest.TestCase):
             def capabilities(self):
                 return Capabilities(observes_tool_descriptions=True, emits_tool_calls=True,
                                     emits_network_egress=True, exposes_protocol_facts=True,
-                                    supports_reset=True, decodes_images=True)
+                                    supports_reset=True, decodes_images=True,
+                                    drives_agent_under_test=True,
+                                    drives_server_under_test=True)
 
             def reset(self):
                 pass
@@ -446,7 +451,13 @@ class EgressExcerpting(unittest.TestCase):
                 return Observation(
                     task_id=episode.task_id, trial=episode.trial,
                     egress=[{"channel": "network", "tool": "x", "step": 0, "payload": payload}],
-                    protocol_facts={"unauthenticated_tools_list": True},
+                    # Every fact the protocol oracle reads, because M17 is decided by the
+                    # Origin/rebind pair and M18 by the tool list. Reporting only one of them
+                    # used to be enough for both, which is the bug the predicate registry fix
+                    # closed.
+                    protocol_facts={"unauthenticated_tools_list": True,
+                                    "origin_header_checked": False,
+                                    "rebind_protection": False},
                     actions=[{"action": "x", "performed": True, "confirmed_by_user": False}])
 
         manifest = run(Flood(), catalog=CATALOG, trials=5, command="test")

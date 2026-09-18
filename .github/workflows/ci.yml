@@ -236,6 +236,39 @@ jobs:
           bash demo/run_demo.sh
           bash demo/reset.sh
 
+  # ------------------------------------------------------ interoperability with real MCP
+  # The stdlib job proves our client and our server agree. That is not the same as speaking
+  # MCP, so this job installs the OFFICIAL SDK into a throwaway environment and drives a
+  # server built with it. `mcp` is never a dependency of the package: it is installed into a
+  # separate venv and reached through ASSAY_MCP_SDK_PYTHON, so the runtime stays stdlib-only.
+  mcp-interop:
+    name: our client drives a server built with the official MCP SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the official SDK into a separate environment
+        run: |
+          python -m venv /tmp/mcp-sdk
+          /tmp/mcp-sdk/bin/pip install --quiet mcp
+
+      - name: The interop check must RUN, not skip
+        env:
+          ASSAY_MCP_SDK_PYTHON: /tmp/mcp-sdk/bin/python
+        run: |
+          python -m unittest tests.test_mcp_interop -v 2>&1 | tee /tmp/interop.log
+          if grep -q "skipped" /tmp/interop.log; then
+            echo "::error::the interop check skipped; it must run in CI or the claim that this client speaks MCP rests on our own server agreeing"
+            exit 1
+          fi
+
+      - name: The package itself must still import with no third-party packages
+        run: |
+          python -c "import sys; sys.path.insert(0, 'src'); import assay_bench.mcp.client; print('stdlib-only import ok')"
+
   # ---------------------------------------------------------------------- optional extras
   optional-pytest:
     name: pytest also collects the suite (optional)

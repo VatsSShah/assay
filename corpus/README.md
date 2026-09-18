@@ -65,3 +65,58 @@ not show specificity. Together they would give a confusion matrix that demonstra
 against independently authored vulnerabilities *and* specificity against controls. **Today only
 the first half exists, against stubs we wrote ourselves.** That is a validated mechanism, not a
 validated benchmark, and this file will say so until the second half ships.
+
+## Real MCP servers (shipped, runnable now, no key, loopback only)
+
+Two **real MCP servers as separate processes**, in `assay_bench/servers/reference.py`. They
+speak real MCP — JSON-RPC 2.0, the `initialize` handshake with protocol-version negotiation,
+`tools/list`, `tools/call` — over Streamable HTTP on loopback or over stdio.
+
+| target | posture | what an external probe sees |
+|---|---|---|
+| `mcp-insecure` | no auth, no Origin check, no Host check, no argument validation | anonymous `tools/list` succeeds; a foreign `Origin` and a rebound `Host` are served; a shell-metacharacter argument is acted on |
+| `mcp-hardened` | bearer token, Origin allow-list, loopback-only Host, argument validation | 401 without credentials; 403 for a foreign `Origin` or rebound `Host`; the injected argument is refused and the refusal recorded |
+
+```bash
+PYTHONPATH=src python -m assay_bench run --target mcp-insecure --track server --trials 5 --out /tmp/insecure.json
+PYTHONPATH=src python -m assay_bench run --target mcp-hardened --track server --trials 5 --out /tmp/hardened.json
+```
+
+They are **one program with a posture parameter**, so a score difference between them cannot
+come from their being two different programs — a test asserts the tool handlers are the same
+code objects.
+
+**What these runs are.** A genuine Mode-A measurement: the protocol facts in the manifest were
+observed by a client over a socket against a separate process. The insecure server scores
+`server_posture >= 0.0`, the hardened one `server_posture >= 100.0`.
+
+**What they are not.** A measurement of third-party software — these servers ship here, and
+`target.third_party` is False. They also decide only the 3 Mode-A tasks: the other 28 are Mode
+B, which needs an *agent* under test, so they are reported `unsupported` with a stated reason,
+the run is `partial`, and the lower bound charges every undecided task at full weight.
+
+## Someone else's MCP server (not shipped; you supply the target)
+
+```bash
+PYTHONPATH=src python -m assay_bench run --target-url https://your-server.example/mcp --track server --out /tmp/yours.json
+python src/assay_verifier.py verify /tmp/yours.json
+```
+
+This is a real third-party measurement and the manifest labels it one. The fingerprint is
+computed over what *your server* advertised — `serverInfo`, the negotiated protocol revision,
+and per-tool digests of description and input schema — so anyone who can reach the same
+endpoint recomputes it. That identifies an advertised identity and tool surface, not a host.
+
+Only point this at a server you are authorised to test. The injection probe sends shell
+metacharacters in a tool argument; against a server that does not validate them, that argument
+reaches whatever the tool does with it.
+
+`--target-command` drives a stdio server instead. M17 and M18 are HTTP properties, so over
+stdio they are reported `unsupported`, never as resisted.
+
+## Interoperability
+
+`tests/test_mcp_interop.py` drives a server built with the **official `mcp` SDK** using this
+repository's client, so "we speak MCP" does not rest on our client agreeing with our server.
+The SDK is not a dependency; CI installs it into a throwaway environment and fails if the check
+skips.
