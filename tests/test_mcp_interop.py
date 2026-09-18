@@ -173,7 +173,12 @@ class TheSkipIsVisible(unittest.TestCase):
     """A skipped interop check must be legible, not a silent hole in a green run."""
 
     def test_the_repository_says_how_to_run_this_check(self):
-        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+        workflow_path = ROOT / ".github" / "workflows" / "ci.yml"
+        if not workflow_path.is_file():
+            # An sdist ships the project, not its CI configuration. The claim this guards --
+            # that CI runs the interop check -- is about the repository, so it is checked there.
+            self.skipTest("no CI configuration in this tree; it is not a repository checkout")
+        workflow = workflow_path.read_text()
         self.assertIn("ASSAY_MCP_SDK_PYTHON", workflow,
                       "CI must run the interop check against the official SDK, otherwise the "
                       "claim that this client speaks MCP rests on our own server agreeing")

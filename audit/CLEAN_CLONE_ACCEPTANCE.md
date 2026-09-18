@@ -124,8 +124,10 @@ unset: `--help`, `--version`, `levels`, a full `run`, `verify --require run_comp
 legacy bare-path form, `triple`, and a Mode-A run against a real MCP server over a loopback
 socket all behave.
 
-The sdist unpacks and **its own suite passes standalone**: 285 tests, 12 skipped as
-checkout-only (git history and the recording are deliberately absent from a distribution).
+The sdist unpacks and **its own suite passes standalone**, running the subset that does not
+need git history, CI configuration or the recording; each of those skips with its reason. The
+subset's size is not quoted here, because it moves with every commit and the claim does not
+depend on it.
 
 No deprecation warning is emitted — a test asserts the build output stays clean, which is what
 the SPDX `license` string fixed.

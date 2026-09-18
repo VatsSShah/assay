@@ -243,9 +243,11 @@ a test fails if any surface implies otherwise.
 - **The wheel carries what it needs**: verifier, scorer, badge tool, runner package, the frozen
   catalog and the published schema. It previously shipped one module and no catalog, so an
   installed verifier could not reach `catalog_bound`.
-- **An sdist builds and its own test suite passes from the unpacked tree** (285 tests; 12 skip as
-  checkout-only, which they say). Recording binaries are excluded from both distributions and a
-  test asserts it.
+- **An sdist builds and its own test suite passes from the unpacked tree.** It runs a subset:
+  the tests that need git history, CI configuration or the recording skip there, each saying so.
+  The subset's size is deliberately not quoted anywhere — it changes with every commit and tells
+  a reader nothing the claim does not. Recording binaries are excluded from both distributions
+  and a test asserts it.
 - **SPDX licence metadata**, so builds emit no deprecation warning, with a test asserting the
   build output stays warning-free.
 - **`CHANGELOG.md`** with an explicit versioning model: package version, benchmark version,

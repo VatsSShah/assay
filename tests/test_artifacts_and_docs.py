@@ -346,6 +346,9 @@ class ExecutableDocumentation(unittest.TestCase):
             doc = ROOT / name
             if doc.is_file():
                 documented.update(self._commands(doc))
+        # The workflow and the PR template are repository files an sdist does not ship, so
+        # without them an excuse would look dead when it is merely out of view.
+        require_source_checkout(self)
         elsewhere = ""
         for name in (".github/workflows/ci.yml", ".github/PULL_REQUEST_TEMPLATE.md"):
             path = ROOT / name
@@ -571,9 +574,14 @@ class DocumentedNumbersMatchReality(unittest.TestCase):
     def test_the_stated_test_count_is_the_real_one(self):
         """Any three-digit number described as a test count must be the actual total.
 
-        285 is allowed as well: that is the sdist's count, where the checkout-only tests skip.
+        Checkout-only. The documented number describes the repository's suite; a tree unpacked
+        from an sdist runs a subset, because the tests needing git history or CI configuration
+        skip there. The previous version allowed a second hardcoded number for that subset,
+        which went stale the moment the suite grew -- a hand-kept count inside the test whose
+        entire job is to catch hand-kept counts.
         """
-        allowed = {str(self.total), "285"}
+        require_source_checkout(self)
+        allowed = {str(self.total)}
         pattern = re.compile(r"(\d{3})\s*(?:tests|run)\b|(?:tests|suite)[^.\n]{0,24}?\b(\d{3})\b")
         for name in self.PROSE:
             path = ROOT / name

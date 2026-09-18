@@ -218,9 +218,16 @@ class Packaging(unittest.TestCase):
 
     @classmethod
     def _version(cls):
-        import tomllib
-        with open(ROOT / "pyproject.toml", "rb") as fh:
-            return tomllib.load(fh)["project"]["version"]
+        """The version of the wheel that was actually built.
+
+        Taken from the wheel's own filename rather than by parsing pyproject.toml, for two
+        reasons. `tomllib` is 3.11+, and this suite supports 3.10 — reading the source of truth
+        with a parser that does not exist on a supported interpreter is not reading it at all.
+        And the question these tests ask is what the BUILD produced, which the artefact answers
+        directly; pyproject is what it was asked to produce.
+        """
+        # assay_bench-0.2.0-py3-none-any.whl -> 0.2.0
+        return cls.wheel_path.name.split("-")[1]
 
     def test_wheel_ships_the_frozen_task_set(self):
         names = zipfile.ZipFile(self.wheel_path).namelist()

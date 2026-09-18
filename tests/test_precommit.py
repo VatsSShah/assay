@@ -411,6 +411,10 @@ class PrecommitCommandLine(unittest.TestCase):
         `precommitment_verified` -- that needs a forge witness only CI can supply -- and the
         tooling must keep saying so rather than relabelling what it has.
         """
+        from .helpers import require_source_checkout
+
+        # The record ships in the sdist, but the git history that makes it evidence does not.
+        require_source_checkout(self)
         root = Path(__file__).resolve().parent.parent
         records = sorted((root / "precommit" / "registry").glob("*.json"))
         self.assertTrue(records, "the worked example's registry record is missing")
