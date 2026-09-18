@@ -476,12 +476,64 @@ def qr_to_png(matrix: list[list[int]], scale: int = 4, quiet: int = 4) -> bytes:
     return write_png(rows)
 
 
-def png_to_qr(data: bytes, scale: int = 4, quiet: int = 4) -> list[list[int]]:
-    """Recover the module matrix from a PNG produced by :func:`qr_to_png`."""
+def png_to_qr(data: bytes, scale: int | None = None, quiet: int | None = None) -> list[list[int]]:
+    """Recover the module matrix from a PNG containing a QR symbol.
+
+    Scale and quiet-zone width are **inferred from the image** by default, the way a scanner
+    has to: nothing in a PNG tells a reader how many pixels a module is. Requiring the caller
+    to pass the same scale the writer used is a decoder that only works when you already know
+    the answer -- and getting it wrong does not fail loudly, it silently samples the wrong
+    pixels and returns a matrix of noise.
+
+    The inference: find the bounding box of dark pixels (that is the symbol, quiet zone
+    excluded), then measure the first contiguous dark run along its top edge. That run is the
+    top-left finder pattern, which is exactly 7 modules wide by construction, so it gives the
+    module size directly. Pass `scale` explicitly to override.
+    """
     pixels, _ = read_png(data)
-    side = len(pixels)
-    n = side // scale - 2 * quiet
-    return [[1 if pixels[(y + quiet) * scale][(x + quiet) * scale][0] < 128 else 0
+    height = len(pixels)
+    if height == 0:
+        raise ValidationError("image is empty")
+    width = len(pixels[0])
+
+    def dark(x: int, y: int) -> bool:
+        return pixels[y][x][0] < 128
+
+    if scale is None or quiet is None:
+        top = next((y for y in range(height) if any(dark(x, y) for x in range(width))), None)
+        if top is None:
+            raise ValidationError("image contains no dark pixels, so it carries no QR symbol")
+        bottom = max(y for y in range(height) if any(dark(x, y) for x in range(width)))
+        left = min(x for x in range(width) if any(dark(x, y) for y in range(top, bottom + 1)))
+        right = max(x for x in range(width) if any(dark(x, y) for y in range(top, bottom + 1)))
+        span = right - left + 1
+        if bottom - top + 1 != span:
+            raise ValidationError(
+                f"the dark region is {span}x{bottom - top + 1}, not square, so it is not a QR "
+                f"symbol")
+        run = 0
+        while left + run <= right and dark(left + run, top):
+            run += 1
+        if run % 7:
+            raise ValidationError(
+                f"the top-left finder pattern measures {run}px, which is not a whole number of "
+                f"7 modules; the symbol is scaled non-uniformly or is not a QR code")
+        inferred_scale = run // 7
+        if inferred_scale < 1 or span % inferred_scale:
+            raise ValidationError(f"inferred module size {inferred_scale} does not divide the "
+                                  f"symbol width {span}")
+        scale = inferred_scale if scale is None else scale
+        quiet = left // scale if quiet is None else quiet
+        origin_x, origin_y = left, top
+        n = span // inferred_scale
+    else:
+        origin_x = origin_y = quiet * scale
+        n = height // scale - 2 * quiet
+
+    if n < 21 or (n - 21) % 4:
+        raise ValidationError(f"not a QR matrix: size {n}")
+    half = scale // 2
+    return [[1 if dark(origin_x + x * scale + half, origin_y + y * scale + half) else 0
              for x in range(n)] for y in range(n)]
 
 

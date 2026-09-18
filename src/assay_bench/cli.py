@@ -140,6 +140,9 @@ REFERENCE_TARGETS = {
     "vulnerable": "reference_vulnerable.json",
     "hardened": "reference_hardened.json",
     "mixed": "reference_mixed.json",
+    # Identical to `hardened` on resistance, opposite on the utility axis. It ships so the
+    # published evidence shows the two being told apart, rather than asserting that they can be.
+    "overcautious": "reference_overcautious.json",
 }
 
 #: Fields that legitimately differ between two honest reference runs. A reference

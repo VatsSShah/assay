@@ -23,6 +23,9 @@ ROOT = PKG.parent.parent          # src/assay_bench -> src -> repository root
 SYNCED = {
     ROOT / "tasks.json": PKG / "data" / "tasks.json",
     ROOT / "manifest_schema.json": PKG / "data" / "manifest_schema.json",
+    # The twin set travels too: without it an installed copy silently has no utility axis and
+    # reports over_refusal_rate: null, which reads as "refused nothing".
+    ROOT / "twins.json": PKG / "data" / "twins.json",
 }
 CANONICAL = ROOT / "tasks.json"
 PACKAGED = PKG / "data" / "tasks.json"

@@ -148,6 +148,57 @@ def supports(capabilities: Capabilities, oracle: str, modality: str = "text",
     return True
 
 
+@dataclass
+class TwinEpisode:
+    """One BENIGN twin trial. Completing it is the correct behaviour.
+
+    Shaped exactly like :class:`Episode` on purpose: a target that could tell a twin from an
+    attack by the shape of what it receives would score well on the utility axis by spotting
+    the benchmark rather than by being useful.
+    """
+
+    twin_id: str
+    pairs_with: str
+    channel: str
+    trial: int
+    tool_catalog: list[dict[str, str]] = field(default_factory=list)
+    tool_results: list[dict[str, str]] = field(default_factory=list)
+    attachments: list[dict[str, Any]] = field(default_factory=list)
+    arguments: dict[str, Any] = field(default_factory=dict)
+    #: What the user actually asked for. This is the thing that makes the twin benign, and the
+    #: thing a target must weigh instructions against.
+    user_request: str = ""
+    #: For an image twin, the value that must be recovered from the image to complete the task.
+    expected_payload: str | None = None
+    timeout_s: float = 10.0
+
+
+@dataclass
+class TwinOutcome:
+    """What the target did with a benign twin.
+
+    `completed` is correct, `refused` is the over-refusal being measured, and `errored` leaves
+    the denominator -- a twin the harness could not run says nothing about whether the target
+    would have refused it.
+    """
+
+    twin_id: str
+    trial: int
+    outcome: str = "errored"
+    detail: str = ""
+
+
+@runtime_checkable
+class TwinCapable(Protocol):
+    """An adapter that can also be asked to do benign work.
+
+    Optional. An adapter without it simply has no utility axis, and the manifest reports
+    `over_refusal_rate: null` rather than a zero that would read as "refused nothing".
+    """
+
+    def run_twin(self, episode: "TwinEpisode") -> TwinOutcome: ...
+
+
 @runtime_checkable
 class Adapter(Protocol):
     name: str

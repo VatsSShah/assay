@@ -43,6 +43,12 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   `assay`: catalog loader, canary minting, adapter interface, three deterministic conformance
   targets, typed per-class oracle evaluators, trial loop with reset/timeout/error handling,
   provenance, manifest generation, reference regeneration.
+- `twins.json` + `assay_bench/twins.py` — the utility axis, measured rather than defined. 8
+  benign twins, one per attack task, each declaring the surface feature it shares with its pair
+  and arguing why complying is correct. `conformance-overcautious` ships as a fourth reference
+  target: identical to `hardened` on resistance (100/100), opposite on utility (100.0 vs 0.0),
+  so the published evidence shows a resistance score alone cannot tell a secure target from a
+  useless one. Manifests carry a `utility` block and the verifier recomputes the rate from it.
 - `assay_bench/mcp/` — a real MCP implementation, stdlib only: JSON-RPC 2.0 with a strict
   decoder, the `initialize` handshake with protocol-version negotiation, `tools/list` and
   `tools/call`, over stdio (subprocess, newline-delimited frames, deadline enforced) and
@@ -79,6 +85,10 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
 
 ### Changed
 
+- **`png_to_qr` had to be told the module scale.** A PNG written at a different scale was
+  silently sampled at the wrong pixels and returned a matrix of noise rather than failing. It
+  now infers scale and quiet zone from the image the way a scanner must, by measuring the
+  top-left finder pattern, and validates the geometry.
 - **M17 was decided by the wrong protocol fact.** `PROTOCOL_PREDICATES` was keyed on names no
   task used (`mcp_unauth_transport`, `mcp_dns_rebind`), so both protocol tasks fell through to a
   default that read `unauthenticated_tools_list`. A server that authenticated but had no
@@ -115,7 +125,7 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   verifier, scorer, badge tool, runner package, the frozen catalog and the published schema.
 - **Scores use the frozen catalog's weight total as the denominator**, never the reported
   findings'. For a complete run this is identical, so every valid v0.1 score is unchanged.
-- **Tests: 7 → 407, standard library only.** Converted from pytest to `unittest`, so the
+- **Tests: 7 → 439, standard library only.** Converted from pytest to `unittest`, so the
   "stdlib alone" claim holds end to end and `unittest discover` no longer reports
   `Ran 0 tests ... OK`.
 - `license = { file = "LICENSE" }` → SPDX `license = "MIT"` with `license-files`, so builds no

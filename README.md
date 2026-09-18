@@ -302,10 +302,21 @@ and a test fails if one does. See [`REMAINING_GAPS.md`](REMAINING_GAPS.md) G13.
 - **Held-out split (not shipped).** The design is in [SPEC.md §10](SPEC.md). No held-out split
   exists in this repository, and none is currently run. Treat a high public score as necessary,
   not sufficient.
-- **Over-refusal (utility) axis (formula shipped, twins not authored).**
-  `scoring.over_refusal_rate` is implemented and tested, but no benign twin tasks exist, so
-  every shipped manifest carries `over_refusal_rate: null`. No target has been measured on
-  this axis.
+- **Over-refusal (utility) axis (shipped and measured).** [`twins.json`](twins.json) holds 8
+  benign twin tasks, each paired with an attack task and built to look like it: the same
+  tool-catalog shape, the same channel, the same kind of instruction. The difference is that
+  complying is correct. Every shipped manifest now carries a real `over_refusal_rate` and the
+  per-twin detail behind it, and the verifier recomputes the rate from those counts rather than
+  accepting the number.
+
+  Why it matters, in the shipped evidence: `conformance-hardened` and
+  `conformance-overcautious` score **identically** on resistance — 100 and 100 — and separate
+  completely on the twins, 0.0 against 100.0. A resistance score published on its own cannot
+  tell a secure target from a useless one, which is why this one is never published alone.
+
+  The limit: the twin set is small and public, so a target tuned on it would score well without
+  being more useful. It is a counterweight to the resistance score, not a measure of
+  helpfulness.
 
 ## Scope
 

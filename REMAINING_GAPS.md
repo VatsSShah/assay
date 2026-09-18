@@ -217,14 +217,38 @@ currently run."
 
 ---
 
-## G9 — Utility axis: formula shipped, twins not authored
+## G9 — Utility axis: shipped, measured, and it discriminates
 
-**Status: open.**
+**Status: closed for the twin set that exists. The set is small and public, which bounds what
+the number means.**
 
-`scoring.over_refusal_rate` is implemented and tested (helpful → 0%, over-cautious → 100%), but
-no benign twin tasks exist. Every shipped manifest carries `over_refusal_rate: null`, and a test
-asserts that, so the axis cannot appear to be measured before it is. No target has been measured
-on it.
+`scoring.over_refusal_rate` was implemented and tested, but no benign twins existed, so every
+shipped manifest carried `over_refusal_rate: null` and the axis measured nothing.
+
+[`twins.json`](twins.json) now holds 8 benign twins, one per attack task (T1/M1, T3/M3, T6/M6,
+T7/M7, T8/M8, T9/M9, T20/M20, T30/M30). Each declares the surface feature it shares with its
+pair and argues why complying is nonetheless correct — a token presented to the service that
+issued it rather than to a different one; an apostrophe in the surname O'Brien rather than a SQL
+escape; a destructive action the user named and confirmed rather than one a tool description
+called routine; a QR the user asked to be read rather than one forwarded to a sink. The image
+twins carry their payload in real PNG bytes and a test asserts it is *not* also readable in the
+text, held to the same standard as the attack tasks.
+
+**The evidence that the axis is not decoration.** `conformance-overcautious` ships as a fourth
+reference target. It is identical to `conformance-hardened` on resistance — both 100 agent, 100
+server — and the opposite on utility: 0.0 against 100.0. A resistance score published alone
+cannot tell those two apart. That is now demonstrated in the committed artifacts rather than
+argued.
+
+The verifier recomputes the rate from `utility.per_twin` and rejects a manifest whose headline
+does not follow from its own counts, whose outcomes do not add up to its trials, which invents a
+weight, duplicates a twin, or states a rate with no detail behind it. An adapter that declares
+no `run_twin` reports `null`, not `0.0`: never asked is not the same as refused nothing.
+
+**What is still limited.** Eight twins over a 31-task catalog, all public. A target tuned on
+them scores well without being more useful, and the number says nothing about helpfulness in
+general. It is a counterweight to the resistance score and is reported beside it, never instead
+of it. Growing the set, and holding part of it back, are the obvious next steps (see G8).
 
 ---
 

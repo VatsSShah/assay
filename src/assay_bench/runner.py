@@ -126,11 +126,59 @@ def _unsupported_reason(caps, task) -> str:
     return "does not declare a channel this task needs"  # pragma: no cover - defensive
 
 
+def _run_twins(adapter, *, trials: int, timeout_s: float, twin_set=None,
+               enabled: bool = True) -> dict[str, Any] | None:
+    """Run the benign twin set, when the adapter can do benign work at all.
+
+    Returns None -- and the manifest then carries `over_refusal_rate: null` -- when the adapter
+    declares no `run_twin`. That is deliberate: an adapter that was never asked to do benign
+    work has not refused any, and reporting 0.0 would read as "refused nothing" when the truth
+    is "was never asked".
+    """
+    from .adapters import TwinCapable, TwinEpisode
+    from . import twins as twins_mod
+    from .errors import AssayError
+
+    if not enabled or not isinstance(adapter, TwinCapable):
+        return None
+    try:
+        loaded = twin_set if twin_set is not None else twins_mod.load_twins()
+    except AssayError:
+        # A missing or malformed twin set must not take down an otherwise valid attack run.
+        return None
+
+    results = []
+    for twin in loaded:
+        surface = twins_mod.build_twin_surface(twin)
+        completions = errored = 0
+        for trial in range(trials):
+            episode = TwinEpisode(
+                twin_id=twin.id, pairs_with=twin.pairs_with, channel=twin.channel, trial=trial,
+                tool_catalog=surface["tool_catalog"], tool_results=surface["tool_results"],
+                attachments=surface["attachments"], arguments=surface["arguments"],
+                user_request=surface["user_request"],
+                expected_payload=surface["expected_payload"], timeout_s=timeout_s)
+            try:
+                outcome = adapter.run_twin(episode)
+                state = twins_mod.classify(outcome.outcome)
+            except Exception:                    # noqa: BLE001 - any failure is an errored trial
+                state = "errored"
+            if state == "completed":
+                completions += 1
+            elif state == "errored":
+                errored += 1
+        results.append({"id": twin.id, "weight": twin.weight, "trials": trials,
+                        "completions": completions, "errored": errored,
+                        "twin_set_version": loaded.version})
+    return twins_mod.score(results)
+
+
 def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials: int = 25,
         run_secret: str | None = None, task_ids: list[str] | None = None,
         timeout_s: float = 10.0, command: str = "", target_note: str = "",
         model_snapshot: str | None = None, run_id: str | None = None,
-        trials_out: str | None = None) -> dict[str, Any]:
+        trials_out: str | None = None, twins: bool = True,
+        twin_set: Any = None) -> dict[str, Any]:
     """Execute the benchmark and return a schema-valid manifest document."""
     catalog = catalog or load_catalog()
     if track not in ("agent", "server"):
@@ -302,6 +350,13 @@ def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials
     # that charges every task not conclusively resisted at full weight.
     not_conclusive = {tid for tid, states in per_task_outcomes.items()
                       if validity.conclusive_rate(states) == 0.0}
+    # The utility axis. It is measured in the same run as resistance on purpose: a target that
+    # scores 100 by refusing everything and one that scores 100 by refusing only the attacks are
+    # indistinguishable on resistance alone, and publishing that number by itself rewards the
+    # first one.
+    utility = _run_twins(adapter, trials=trials, timeout_s=timeout_s,
+                         twin_set=twin_set, enabled=twins)
+
     scores = {
         "agent_resistance_score": validity.score_over_fixed_denominator(catalog, findings, "B"),
         "server_posture_score": validity.score_over_fixed_denominator(catalog, findings, "A"),
@@ -329,7 +384,7 @@ def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials
         "harness": {"engine": "assay_bench.runner", "assay_version": catalog.version},
         "agent_resistance_score": scores["agent_resistance_score"],
         "server_posture_score": scores["server_posture_score"],
-        "over_refusal_rate": None,  # benign twins are not authored yet; see SPEC.md §10
+        "over_refusal_rate": utility["over_refusal_rate"] if utility else None,
         "scope": {
             "kind": scope_kind,
             "task_ids": sorted(scoped_ids),
@@ -353,6 +408,7 @@ def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials
             "retries": all_retries,
             "raw_trials_recorded": sum(len(o.trials) for o in outcomes),
         },
+        **({"utility": utility} if utility else {}),
         "findings": findings,
         "provenance": provenance.build(
             adapter, catalog, run_id=run_id, trials=trials, command=command,

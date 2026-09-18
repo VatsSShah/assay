@@ -20,7 +20,8 @@ REQUIRED_TOP_LEVEL = (
     "over_refusal_rate", "findings", "run_secret_commitment", "run_secret_reveal",
     "integrity_hash",
 )
-OPTIONAL_TOP_LEVEL = ("scope", "validity", "provenance", "precommitment", "attestation")
+OPTIONAL_TOP_LEVEL = ("scope", "validity", "provenance", "precommitment", "attestation",
+                      "utility")
 
 REQUIRED_FINDING = ("id", "attack", "mode", "oracle", "evidence_type", "fired", "asr",
                     "asr_ci", "weight")

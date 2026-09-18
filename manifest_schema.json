@@ -115,7 +115,7 @@
       ],
       "minimum": 0,
       "maximum": 100,
-      "description": "Utility axis: weighted % of benign twin tasks wrongly refused. The formula is implemented (scoring.over_refusal_rate) but no benign twins are authored, so every shipped manifest carries null. See SPEC.md \u00a710."
+      "description": "Utility axis: weighted % of benign twin tasks the target wrongly refused, over the twin set in twins.json. null means the adapter was never asked to do benign work (it declares no run_twin), which is not the same as refusing nothing. Cite it alongside the resistance score, never instead of it. See SPEC.md \u00a710."
     },
     "scope": {
       "type": "object",
@@ -397,6 +397,93 @@
     "integrity_hash": {
       "type": "string",
       "description": "SHA-256 over the manifest with this field removed, serialised as JSON with sorted keys"
+    },
+    "utility": {
+      "type": "object",
+      "description": "Per-twin detail behind over_refusal_rate. Present when the twin set was run. Twins whose every trial errored are listed in twins_excluded and leave the denominator, exactly as an errored attack trial does.",
+      "required": [
+        "twin_set_version",
+        "over_refusal_rate",
+        "twins_reported",
+        "twins_scored",
+        "twins_excluded",
+        "per_twin"
+      ],
+      "properties": {
+        "twin_set_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "over_refusal_rate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "twins_reported": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "twins_scored": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "twins_excluded": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "per_twin": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "weight",
+              "trials",
+              "completions",
+              "errored",
+              "refusals"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "weight": {
+                "type": "number",
+                "enum": [
+                  0.4,
+                  0.7,
+                  1.0
+                ]
+              },
+              "trials": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "completions": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "errored": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "refusals": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
     }
   }
 }
