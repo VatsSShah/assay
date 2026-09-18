@@ -124,6 +124,44 @@ class Packaging(unittest.TestCase):
             with self.subTest(member=expected):
                 self.assertIn(expected, names)
 
+    def test_the_wheel_carries_every_subpackage_in_the_source_tree(self):
+        """A hand-kept package list silently drops new subpackages.
+
+        `packages` used to be a literal list, and `assay_bench.mcp` and `assay_bench.servers`
+        were simply missing from the wheel: an installed copy could not run against a real MCP
+        server at all while the source checkout could, and nothing failed until someone
+        installed the wheel and reached for the feature. Derived from the tree rather than
+        listed, so a new subpackage cannot be forgotten.
+        """
+        source = ROOT / "src" / "assay_bench"
+        expected = {f"assay_bench/{path.parent.relative_to(source)}/__init__.py".replace(
+                        "assay_bench/./", "assay_bench/")
+                    for path in source.rglob("__init__.py")}
+        names = set(zipfile.ZipFile(self.wheel_path).namelist())
+        missing = sorted(name for name in expected if name not in names)
+        self.assertEqual(missing, [], f"the wheel is missing subpackages: {missing}")
+
+    def test_every_module_in_the_source_tree_ships(self):
+        """Not just packages: a module added to an existing package must travel too."""
+        source = ROOT / "src" / "assay_bench"
+        expected = {f"assay_bench/{path.relative_to(source)}"
+                    for path in source.rglob("*.py")}
+        names = set(zipfile.ZipFile(self.wheel_path).namelist())
+        missing = sorted(name for name in expected if name not in names)
+        self.assertEqual(missing, [], f"the wheel is missing modules: {missing}")
+
+    def test_the_installed_package_can_reach_a_real_mcp_server(self):
+        """The end-to-end shape of the bug: the feature must work from the wheel, not just src."""
+        r = self._python(
+            "from assay_bench.mcp.server import HttpMCPServer; "
+            "from assay_bench.servers.reference import build_server; "
+            "from assay_bench.adapters.mcp_probe import build; "
+            "adapter, stop = build('insecure'); "
+            "print(adapter.fingerprint_material()['remote']['server_name']); "
+            "stop()")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.strip(), "assay-reference-insecure")
+
     def test_the_build_emits_no_deprecation_warning(self):
         """The old `license = {file = ...}` table made setuptools warn on every build."""
         lowered = self.build_output.lower()
@@ -186,7 +224,10 @@ class Packaging(unittest.TestCase):
         r = self._python(
             "import assay_verifier, scoring, badge, assay_bench, assay_bench.cli, "
             "assay_bench.runner, assay_bench.precommit, assay_bench.attest, "
-            "assay_bench.validity; "
+            "assay_bench.validity, assay_bench.media, assay_bench.twins, "
+            "assay_bench.diagnostics, assay_bench.contamination, assay_bench.mcp.client, "
+            "assay_bench.mcp.server, assay_bench.servers.reference, "
+            "assay_bench.adapters.mcp_probe; "
             "from assay_bench.catalog import load_catalog; "
             "print(len(load_catalog()))")
         self.assertEqual(r.returncode, 0, r.stderr)

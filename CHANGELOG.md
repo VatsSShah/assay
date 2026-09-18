@@ -122,6 +122,12 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   fingerprinted differently on every restart and a commitment could never bind its own run.
   Identity is now scheme, host and path, with the exclusion and its reason stated inside the
   republished pre-image.
+- **The wheel silently dropped every new subpackage.** `packages` was a hand-kept literal list,
+  so `assay_bench.mcp` and `assay_bench.servers` were simply absent from the built wheel: an
+  installed copy could not run against a real MCP server at all while the source checkout
+  could, and nothing failed until someone installed it and reached for the feature. Packages
+  are discovered now, and tests derive the expected wheel contents from the source tree rather
+  than from a list.
 - **M17 was decided by the wrong protocol fact.** `PROTOCOL_PREDICATES` was keyed on names no
   task used (`mcp_unauth_transport`, `mcp_dns_rebind`), so both protocol tasks fell through to a
   default that read `unauthenticated_tools_list`. A server that authenticated but had no
@@ -158,7 +164,7 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   verifier, scorer, badge tool, runner package, the frozen catalog and the published schema.
 - **Scores use the frozen catalog's weight total as the denominator**, never the reported
   findings'. For a complete run this is identical, so every valid v0.1 score is unchanged.
-- **Tests: 7 → 500, standard library only.** Converted from pytest to `unittest`, so the
+- **Tests: 7 → 503, standard library only.** Converted from pytest to `unittest`, so the
   "stdlib alone" claim holds end to end and `unittest discover` no longer reports
   `Ran 0 tests ... OK`.
 - `license = { file = "LICENSE" }` → SPDX `license = "MIT"` with `license-files`, so builds no

@@ -50,7 +50,16 @@ package-dir = { "" = "src" }
 # run anywhere with the standard library alone. `scoring` is the canonical scorer it is
 # parity-tested against, so the wheel must carry it too.
 py-modules = ["assay_verifier", "scoring", "badge"]
-packages = ["assay_bench", "assay_bench.adapters"]
+
+[tool.setuptools.packages.find]
+# Discovered, not hand-listed. The list used to be literal and silently dropped every new
+# subpackage: `assay_bench.mcp` and `assay_bench.servers` were missing from the wheel, so an
+# installed copy could not run against a real MCP server at all while the source checkout
+# could. Nothing failed -- the import error only appeared to someone who installed the wheel
+# and then reached for the feature. tests/test_packaging.py now also asserts every subpackage
+# in the source tree is importable from an installed wheel.
+where = ["src"]
+include = ["assay_bench*"]
 
 [tool.setuptools.package-data]
 # Generated from the canonical root tasks.json and manifest_schema.json by
