@@ -27,12 +27,32 @@ jobs:
       - name: Full suite
         run: python -m unittest discover -s tests -t . -v
 
-      - name: Verify every shipped manifest reaches every level
+      # Not every shipped manifest SHOULD reach run_complete, and asserting that they all do
+      # was a stale assumption from when the only targets were in-process stubs. A Mode-A run
+      # against a real MCP server is correctly `partial`: 28 of the 31 tasks need an agent
+      # under test, so they are unsupported rather than resisted. The strong check for that
+      # manifest is the opposite one -- it must verify AND must be refused run_complete.
+      - name: Every conformance reference reaches every level
         run: |
-          for m in leaderboard/manifests/*.json; do
+          for m in leaderboard/manifests/reference_*.json; do
             echo "== $m"
             python src/assay_verifier.py verify "$m" --require run_complete
           done
+
+      - name: A real-target run verifies but is refused run_complete
+        run: |
+          m=leaderboard/manifests/precommitted_mcp_insecure.json
+          python src/assay_verifier.py verify "$m" > /dev/null
+          if python src/assay_verifier.py verify "$m" --require run_complete > /dev/null 2>&1; then
+            echo "::error::a partial real-target run reached run_complete"; exit 1
+          fi
+          python - <<'PY'
+          import json
+          doc = json.load(open("leaderboard/manifests/precommitted_mcp_insecure.json"))
+          assert doc["scope"]["completion"] == "partial", doc["scope"]["completion"]
+          assert doc["validity"]["agent_resistance_lower_bound"] == 0.0
+          print("real-target run verifies, stays partial, and charges every undecided task")
+          PY
 
       - name: Legacy v0.1 manifests must still verify
         run: |
