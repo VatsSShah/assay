@@ -5,7 +5,7 @@ what to say. Co-presenter: Vaibhav Vanage — share this with them before the se
 
 ## The one-line
 
-> Deterministic, recomputable, nothing hidden: we made real models from six labs — OpenAI's included —
+> Deterministic, recomputable, nothing hidden: we made real models from seven labs — OpenAI's included —
 > leak privileged data through MCP tool calls, decided each leak with a keyed oracle instead of an LLM
 > judge, and every number on the screen recomputes on your own phone.
 

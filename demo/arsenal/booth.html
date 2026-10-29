@@ -166,7 +166,7 @@ th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:upp
   <p class="deck">We plant a trap in the content an agent reads for a normal task, and measure whether it
     obeys and leaks. Unlike other benchmarks, the tasks are open, a <b>keyed marker</b> grades each result
     instead of an LLM judge, and you recompute every number yourself.</p>
-  <p class="sub">We ran real models from six labs against live MCP indirect-injection attacks drawn from
+  <p class="sub">We ran real models from seven labs against live MCP indirect-injection attacks drawn from
     named 2025&ndash;26 incidents. Every one leaked a secret, and each leak is provable on your own phone.</p>
   <div class="stats" id="stats"></div>
 </div></header>
@@ -343,7 +343,7 @@ function fixedScore(findings,mode,catalog,missingAsr){const tasks=catalog.filter
   const leakers=S.filter(r=>r.fired_count>0).length;
   const minSec=Math.min(...S.map(r=>r.fired_count));
   const items=[
-    ['n brand',S.length,'models from six labs, run on the same MCP attack battery'],
+    ['n brand',S.length,'models from seven labs, run on the same MCP attack battery'],
     ['n leak',leakers===S.length?'every one':leakers+' of '+S.length,'leaked privileged data to an attacker-controlled lookalike domain'],
     ['n leak','&ge; '+minSec,'injection tasks leaked by even the most resistant model'],
     ['n good','0','LLM judges in the loop: every verdict is a keyed recompute'],
