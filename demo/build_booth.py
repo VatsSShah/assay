@@ -521,8 +521,8 @@ th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:upp
 <nav class="nav"><div class="wrap">
   <span class="logo"><!--LOGO--></span>
   <div class="links">
-    <a href="#different">Why different</a><a href="#spectrum">The spectrum</a><a href="#how">How it works</a><a href="#traces">The traces</a>
-    <a href="#judge">Judge vs oracle</a><a href="#forge">Forge it</a><a href="#real">Real attacks</a>
+    <a href="#real">Real attacks</a><a href="#different">Why different</a><a href="#spectrum">The spectrum</a><a href="#how">How it works</a>
+    <a href="#traces">The traces</a><a href="#judge">Judge vs oracle</a><a href="#forge">Forge it</a>
   </div>
   <span class="tag">Black Hat India · Arsenal · 2026</span>
 </div></nav>
@@ -537,6 +537,17 @@ th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:upp
     named 2025&ndash;26 incidents. Every one leaked a secret, and each leak is provable on your own phone.</p>
   <div class="stats" id="stats"></div>
 </div></header>
+
+<section id="real"><div class="wrap">
+  <p class="eyebrow">Is this borderline? No, it already happened</p>
+  <h2 class="sec">The bespoke scenarios mirror named 2025&ndash;26 incidents</h2>
+  <p class="lead">These are the bespoke faithful scenarios; the rest of the battery shares one
+    indirect-injection surface. Each exfiltration scenario is built from a disclosed real-world
+    incident and carries the CVE or report it mirrors; the behavioural ones map to a known abuse
+    class. A skeptic can check the provenance instead of taking our word for it.</p>
+  <div id="methodology"></div>
+  <p class="note" id="variant-note"></p>
+</div></section>
 
 <section id="different"><div class="wrap">
   <p class="eyebrow">Why this isn't another leaderboard</p>
@@ -676,17 +687,6 @@ th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:upp
       <div id="verify-out"></div>
     </div>
   </div>
-</div></section>
-
-<section id="real"><div class="wrap">
-  <p class="eyebrow">06 · Is this borderline? No, it already happened</p>
-  <h2 class="sec">The bespoke scenarios mirror named 2025&ndash;26 incidents</h2>
-  <p class="lead">These are the bespoke faithful scenarios; the rest of the battery shares one
-    indirect-injection surface. Each exfiltration scenario is built from a disclosed real-world
-    incident and carries the CVE or report it mirrors; the behavioural ones map to a known abuse
-    class. A skeptic can check the provenance instead of taking our word for it.</p>
-  <div id="methodology"></div>
-  <p class="note" id="variant-note"></p>
 </div></section>
 
 <div class="wrap"><div class="foot">github.com/VatsSShah/assay · MIT · every panel recomputes from data baked into this page<br>results name only the model, never the operator · measured via OpenRouter, 5 trials per task · verosek.com</div></div>
