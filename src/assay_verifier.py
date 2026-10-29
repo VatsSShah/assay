@@ -634,17 +634,23 @@ def _check_validity_block(manifest, catalog: dict | None) -> dict:
         catalog_ids = {t["id"] for t in catalog["tasks"]}
         scope = manifest.get("scope") or {}
         if scope.get("kind") == "full" or "required_tasks" not in assessment:
-            expected_required = len(catalog_ids)
+            required_ids = set(catalog_ids)
         else:
             track_mode = "B" if manifest["track"] == "agent" else "A"
-            expected_required = sum(1 for t in catalog["tasks"] if t["mode"] == track_mode)
+            required_ids = {t["id"] for t in catalog["tasks"] if t["mode"] == track_mode}
+        expected_required = len(required_ids)
         if "required_tasks" in assessment:
             _require(assessment["required_tasks"] == expected_required,
                      f"validity.assessment.required_tasks states "
                      f"{assessment['required_tasks']} but the frozen catalog requires "
                      f"{expected_required} for this scope")
         if "missing_tasks" in assessment:
-            derived_missing = sorted(catalog_ids - reported)
+            # Missing is measured against the SAME required set as required_tasks above. It used
+            # to be every catalog id, which disagreed with the runner (validity.required_task_ids)
+            # for any subset run: an agent-track subset was rejected at internally_consistent
+            # because the three Mode-A ids were "missing", and CI's partial-run step, which only
+            # asserts a non-zero exit, passed for that wrong reason.
+            derived_missing = sorted(required_ids - reported)
             _require(sorted(assessment["missing_tasks"]) == derived_missing,
                      f"validity.assessment.missing_tasks states "
                      f"{sorted(assessment['missing_tasks'])[:5]} but the catalog implies "

@@ -23,7 +23,8 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # src/, for `scoring`
 
-from . import RUNNER_VERSION, contamination, diagnostics, provenance, validity
+from . import RUNNER_VERSION, contamination, diagnostics, outcomes as outcome_details, \
+    provenance, validity
 from .adapters import Episode, supports
 from .canary import commitment, new_run_secret, parse_secret
 from .catalog import Catalog, load_catalog
@@ -218,7 +219,10 @@ def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials
             outcome.unsupported = True
             outcome.outcomes = ["unsupported"] * trials
             reason = _unsupported_reason(caps, task)
-            outcome.trials = [{"trial": i, "state": "unsupported", "reason": reason}
+            outcome.trials = [{"trial": i, "state": "unsupported", "reason": reason,
+                               "trial_id": f"{run_id}:{task.id}:{i}",
+                               **outcome_details.classify_detail(state="unsupported",
+                                                                 fired=False)}
                               for i in range(trials)]
             outcome.notes.append(f"adapter {adapter.name!r}: {reason}")
             outcomes.append(outcome)
@@ -231,7 +235,8 @@ def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials
                               tool_catalog=surface["tool_catalog"],
                               tool_results=surface["tool_results"],
                               attachments=surface["attachments"],
-                              canary=surface["canary"], timeout_s=timeout_s)
+                              canary=surface["canary"], timeout_s=timeout_s,
+                              run_id=run_id)
 
             attempt = 0
             observation = failure = None
@@ -298,10 +303,18 @@ def run(adapter, *, catalog: Catalog | None = None, track: str = "agent", trials
             canary = surface.get("canary")
             record: dict[str, Any] = {
                 "trial": trial,
+                "trial_id": episode.trial_id,
                 "state": state,
                 "fired": fired,
                 "retries": sum(1 for r in outcome.retries if r["trial"] == trial),
             }
+            # What happened beyond the scoring state (attempted vs executed vs blocked). Read
+            # from the LAST attempt's observation only: a retry is the same trial, so it can
+            # never add a second success. It is recorded beside the state, never used for it.
+            record.update(outcome_details.classify_detail(
+                state=state, fired=fired,
+                detail=getattr(observation, "detail", None) if observation is not None else None,
+                reason=failure))
             if canary is not None:
                 # The digest, not the secret: enough to re-derive the trial given the reveal,
                 # without duplicating key material into a second place in the document.

@@ -86,6 +86,19 @@ class Episode:
     attachments: list[dict[str, Any]] = field(default_factory=list)
     #: Wall-clock budget in seconds for this episode.
     timeout_s: float = 10.0
+    #: The runner's run id. Optional so an Episode built by hand (tests, older callers) still
+    #: works; the runner always sets it, which is what makes ``trial_id`` unique in an experiment.
+    run_id: str = ""
+
+    @property
+    def trial_id(self) -> str:
+        """``<run_id>:<task_id>:<trial>`` -- the trace and raw-trial key for this trial.
+
+        Retries of the same trial share it on purpose: a retry is another attempt at the SAME
+        trial, never a new one. Without a run id the prefix is ``unscoped``, which a bundle
+        verifier will reject as not belonging to any recorded run.
+        """
+        return f"{self.run_id or 'unscoped'}:{self.task_id}:{self.trial}"
 
 
 @dataclass
@@ -102,6 +115,12 @@ class Observation:
     actions: list[dict[str, Any]] = field(default_factory=list)
     #: Set when the adapter failed; the trial is then errored, never silently "resisted".
     error: str | None = None
+    #: Optional, adapter-reported facts the oracle does NOT read: whether the model attempted the
+    #: dangerous action, whether it executed, whether a control blocked it, API failures, refusal
+    #: phrasing. ``outcomes.classify_detail`` turns them into ``outcome_detail``; an adapter that
+    #: leaves this empty (the conformance stubs) gets defaults derived from the oracle's verdict.
+    #: Nothing here can change a score -- the oracle's boundary is ``egress``/``actions`` above.
+    detail: dict[str, Any] = field(default_factory=dict)
 
     def egress_text(self) -> str:
         return "\n".join(str(e.get("payload", "")) for e in self.egress)

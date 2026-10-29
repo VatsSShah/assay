@@ -1,0 +1,24 @@
+{
+  "schema": "assay/experiment-config/1",
+  "name": "synthetic-local",
+  "description": "SYNTHETIC. A scripted, deliberately vulnerable mock model run against four Mode-B tasks under the baseline and each of the four reference controls. Validates the pipeline (adapter, controls, traces, oracle, bundle, verification) offline. It measures no real model.",
+  "operator": "local-example",
+  "trials": 5,
+  "twins": false,
+  "model": {
+    "provider": "mock",
+    "behaviour": "vulnerable",
+    "api_model_id": "assay-mock/vulnerable",
+    "live": false,
+    "max_output_tokens": 512
+  },
+  "agent": {"max_steps": 6, "timeout_s": 20},
+  "attack": {"task_ids": ["M1", "M3", "M23", "M9"], "variant": "plausible"},
+  "configurations": [
+    {"name": "baseline"},
+    {"name": "confirmation_gated"},
+    {"name": "egress_restricted", "allowlist": ["example.com"]},
+    {"name": "tool_restricted"},
+    {"name": "policy_validated"}
+  ]
+}

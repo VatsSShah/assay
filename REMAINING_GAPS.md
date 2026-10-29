@@ -15,6 +15,10 @@ real loopback MCP connection, and a spectrum of real models has been measured
 model has been shown to read the planted canary), a witnessed run (one machine ran both sides), and
 faithful multi-phase renderings of every mechanism.**
 
+> Cross-reference: what the real-model evidence does and does not establish, and what this change
+> set adds for future runs, is in [G15](#g15--evidence-depth-and-independent-verification) and
+> [`docs/CREDIBILITY_AUDIT.md`](docs/CREDIBILITY_AUDIT.md).
+
 At baseline the only adapters were three deterministic in-process stubs, so every number was a
 property of the harness talking to itself. That is no longer true for the text agent tasks:
 [`src/assay_bench/adapters/llm_agent.py`](src/assay_bench/adapters/llm_agent.py) drives a real model
@@ -94,6 +98,11 @@ the adversarial surface, with a defined egress capture boundary.
 
 **Status: unfixable for self-reported runs, and that is a fact about self-reporting rather than
 a bug. The cause is now removable: a witnessed run reaches a level a fabrication cannot.**
+
+> Cross-reference: no committed artifact carries a witness statement, and `witness-sign` signs the
+> fired ids recorded in the manifest it is given; per-observation receipts from a witness-run sink
+> are added in this change set and described in
+> [G15](#g15--evidence-depth-and-independent-verification).
 
 `observed` is submitter-supplied text and the submitter holds the run secret. Compute the
 digest, paste it into an invented string, and the verifier confirms it. `run_complete` forces a
@@ -539,7 +548,7 @@ explicit list of what is *not* a vulnerability because it is a documented limit,
 
 **Rehearsed and passing**, from a clean clone of the pushed `main`:
 
-- 578 tests, 0 failures;
+- the full suite as it stood at that rehearsal, 0 failures (the current count is in `CONTRIBUTING.md`);
 - `python -m build` produces both artifacts, `twine check --strict` **PASSES** on each;
 - the wheel installs into a clean venv and runs from outside the checkout, including a Mode-A
   run against a real MCP server;
@@ -574,3 +583,61 @@ exists to fix. The *inputs* stay compatible — v0.1 manifests verify unchanged,
 as fixtures the suite checks on every run — and every v0.1 CLI invocation still works, including
 the bare-path form. The frozen public interfaces (31 task ids, modes, oracle classes, weights,
 score semantics, the integrity-hash rule, the canary triple format) are untouched.
+
+---
+
+## G15 — Evidence depth and independent verification
+
+**Status: the tooling to produce checkable real-model evidence is added in this change set. The
+evidence itself still does not exist, because producing it needs parties and resources this
+repository does not control.**
+
+The real-model spectrum in [`demo/arsenal/spectrum/`](demo/arsenal/spectrum/) is eight
+self-reported scorecards: outcome counts and one recomputable proof string per fired task, from
+one operator's machine, one run per model, five trials per task. There are no per-step traces,
+transcripts, provider response ids or provider-reported model names; no sampling parameters were
+set; the raw per-trial files were not committed; the code commit the scorecards name predates the
+scenario code that ran; nothing was witnessed by a party the operator does not control; nothing
+has been reproduced. A "fired" canary task means the model *requested* a tool call carrying the
+canary to a loopback sink that sends nothing. The full analysis, including the 14 task ids that
+reuse one scenario and the envelope-shape confound, is in
+[`docs/CREDIBILITY_AUDIT.md`](docs/CREDIBILITY_AUDIT.md).
+
+### What this change set closes (for new runs)
+
+| gap | closed by |
+|---|---|
+| no per-step record of what the model saw and did | hash-chained traces (`assay/trace/1`, `src/assay_bench/trace.py`) with distinct events for generated, requested, executed, transmitted and received |
+| "requested" and "executed" conflated in scoring | `outcome_detail`, `model_attempted`, `executed` per trial (`src/assay_bench/outcomes.py`) |
+| model, sampling, environment and dirty-tree metadata | the experiment manifest with explicit `metadata_gaps` (`assay experiment run`, `assay experiment validate-config`) |
+| accidental billable calls; synthetic output mistaken for measurement | mock models by default, live calls only with `--allow-billable-calls`, synthetic outputs labelled |
+| secrets and home paths in published artifacts | `assay redact` (`src/assay_bench/redaction.py`) |
+| no way to bind scorecards, trials and traces together | `assay verify-artifacts` / `assay sign-artifacts` (`src/assay_bench/bundle.py`) — integrity relative to the signer |
+| the witness only signs the manifest's own claims | per-observation receipts from a witness-run sink: `assay witness-sink`, `assay verify-witness`, `assay witness-demo` (`src/assay_bench/witness_receipt.py`) |
+| no intervals or comparisons across configurations | `assay analyze` (`src/assay_bench/analysis.py`) and [`research/statistical-analysis.md`](research/statistical-analysis.md) |
+| no format for a third party's rerun | `assay replication validate` (`src/assay_bench/replication.py`) and [`docs/REPLICATION_GUIDE.md`](docs/REPLICATION_GUIDE.md) |
+| overstated README claims | the README's evidence-status section and the requalified spectrum table |
+
+### What still requires an external party or a live run
+
+- **An independently operated witness.** Receipts are only as independent as whoever runs the
+  sink. Someone other than the operator must run `assay witness-sink` with their own key, and that
+  key must be published and pinned. Until then every receipt is self-witnessed, and says so.
+- **Independent replications.** A third party with their own API access re-running the same
+  configurations and submitting a bundle. None exists.
+- **A live re-run of the spectrum with full traces**, explicit sampling parameters, provider
+  response ids, one run secret across configurations (so every model sees the same secret shape
+  per task), more trials per cell, and a repeat on a second day. This is billable and was not done
+  in this change set; the committed spectrum is unchanged.
+- **A held-out split** (G8): only possible outside this public repository.
+- **Model-revision pinning.** A router id names a route, not weights. New runs record the
+  provider-reported model per response; a guarantee would need a provider that exposes and pins
+  revisions.
+
+### Also still open, inside the repository
+
+Mechanism-faithful real-model scenarios for the tool-description, schema, shadowing and rug-pull
+tasks (M1, M2, M4, M5, M13 — no real-model scenario poisons a tool description today); a utility
+axis for real models that uses the attack prompt, a task-specific completion check, and marks image
+twins unsupported; a partial-run headline that does not credit undecided tasks as resisted; and the
+booth, handout and runbook wording listed in the credibility audit §10.

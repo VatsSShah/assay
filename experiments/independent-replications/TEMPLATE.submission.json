@@ -1,0 +1,58 @@
+{
+  "schema": "assay/replication-submission/1",
+  "researcher": {
+    "id": "<REPLACE: your name or a stable pseudonym>",
+    "is_pseudonym": true,
+    "contact": "<REPLACE: a contact address, or null>"
+  },
+  "assay_commit": "<REPLACE: full 40-hex commit of the Assay checkout you ran>",
+  "experiment": {
+    "experiment_id": "<REPLACE: exp-YYYYMMDD-xxxxxxxx from your bundle's experiment.json>",
+    "config_path": "config.json"
+  },
+  "model": {
+    "provider": "<REPLACE: e.g. the model vendor>",
+    "api_model_id": "<REPLACE: the exact model id sent to the API>",
+    "routing_service": "<REPLACE: e.g. a router name, or null if you called the provider directly>",
+    "provider_reported_models": [],
+    "model_revision": null
+  },
+  "results": {
+    "configurations": [
+      {
+        "name": "<REPLACE: configuration name, e.g. baseline>",
+        "trials_scheduled": 0,
+        "trials_executed": 0,
+        "attack_succeeded": 0,
+        "attack_failed": 0,
+        "inconclusive": 0,
+        "infrastructure_failures": 0,
+        "unsupported": 0
+      }
+    ]
+  },
+  "evidence": {
+    "bundle_path": "<REPLACE: path to the bundle, relative to this file>",
+    "artifact_index_sha256": "<REPLACE: index_sha256 from artifact_index.sig.json, or sha256 of artifact_index.json>",
+    "artifact_signing_public_key": null
+  },
+  "verification": {
+    "ok": false,
+    "checks": [],
+    "experiment_id": "<REPLACE: paste the full JSON printed by `assay verify-artifacts <bundle>`>"
+  },
+  "witness": null,
+  "deviations": [
+    {
+      "description": "<REPLACE: what you did differently from the original method, or delete this entry and leave the list empty>",
+      "reason": "<REPLACE: why>",
+      "impact": "<REPLACE: what it could change about the result>"
+    }
+  ],
+  "replicates": null,
+  "evidence_levels": {
+    "self_reported": true,
+    "independently_witnessed": false,
+    "independently_reproduced": false
+  }
+}

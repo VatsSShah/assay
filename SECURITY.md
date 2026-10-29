@@ -4,9 +4,14 @@
 
 Assay is a benchmark task set, a runner and a verifier for **MCP security evaluation**. It ships
 adversarial content by design: poisoned tool descriptions, injection templates and exfiltration
-mechanics are the subject matter. That content is inert — it targets the built-in deterministic
-conformance stubs and nothing else — but treat the repository as you would any offensive-security
-corpus.
+mechanics are the subject matter. The deterministic surface targets the built-in conformance stubs.
+The faithful scenarios in `src/assay_bench/scenarios.py` are written to steer **real LLM agents**
+(`--target llm`, `assay experiment run` with a live model), but only against loopback MCP servers
+this harness starts, with synthetic canaries and attacker sinks that are in-process stubs: nothing
+is sent to a third-party host unless an operator configures a witness endpoint. Treat the
+repository as you would any offensive-security corpus, and run live experiments only against
+models and endpoints you are authorized to test (see
+[`docs/REPLICATION_GUIDE.md`](docs/REPLICATION_GUIDE.md)).
 
 ## Reporting a vulnerability
 
@@ -28,6 +33,9 @@ a document claim more than it should:
 | A way to make a partial run look complete | bypassing the catalog count or the validity assessment |
 | A way to raise a score by reporting less | anything that breaks the omission-proof lower bound |
 | A precommitment that verifies without the ordering holding | forging repository ancestry |
+| An experiment bundle that passes `verify-artifacts` after a member file changed | a trace edit that the index or hash chain misses |
+| A witness receipt that verifies without the witness's private key | a signature, replay or freshness bypass in `verify-witness` |
+| A redaction miss that publishes a real credential in a public artifact | a key shape `assay redact` does not recognise |
 | Code execution, path traversal or data exfiltration from running the tools | a crafted manifest that writes outside its output path |
 | Secret leakage | the run secret appearing in provenance, logs or a registry record |
 

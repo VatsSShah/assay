@@ -14,6 +14,83 @@ task-set line: it moves only when the task set does, never when the tooling chan
 | precommit record schema `assay/precommit-record/1` | |
 | attestation schema `assay/attestation/1` | |
 
+## Unreleased — evidence depth and independent verification
+
+Makes a run inspectable and checkable by someone who does not trust the operator. The benchmark
+(task set, oracle, scores, manifest format `2`) is unchanged; every addition is beside it. The
+audit that motivated it is [`docs/CREDIBILITY_AUDIT.md`](docs/CREDIBILITY_AUDIT.md); what is still
+open is G15 in [`REMAINING_GAPS.md`](REMAINING_GAPS.md).
+
+New schemas: `assay/trace/1`, `assay/experiment-manifest/1`, `assay/artifact-index/1`,
+`assay/artifact-signature/1`, `assay/redaction-report/1`, `assay/witness-receipt/1`,
+`assay/trusted-witness-keys/1`, `assay/analysis/1`, `assay/replication-submission/1`.
+
+### Fixed
+
+- **Every task-subset run failed verification at `internally_consistent`.** The verifier derived
+  `missing_tasks` over the whole catalog while the runner derives it over the track's own mode, so
+  an agent-track subset was rejected for "missing" the three Mode-A tasks. CI's partial-run step
+  asserted only a non-zero exit and so passed for the wrong reason; it now requires the run to
+  verify first, and `tests/test_verifier.py::SubsetRuns` pins the level reached.
+
+### Added
+
+- **Execution traces** (`trace.py`): typed, hash-chained per-trial events that keep five outcomes
+  distinct — the model generated a dangerous string, requested a tool call, the tool executed it,
+  bytes were transmitted, bytes arrived at an independently controlled sink — with a consistency
+  checker. See [`docs/EVIDENCE_FORMAT.md`](docs/EVIDENCE_FORMAT.md).
+- **Experiment runner** (`assay experiment run`, `experiment.py`): a frozen JSON config produces a
+  bundle with an experiment manifest (commit, dirty-tree flag, environment, model and sampling
+  parameters, provider response ids and provider-reported model, per-scenario attack metadata,
+  per-run outcome counts; unavailable fields are null and listed in `metadata_gaps`), scorecards,
+  raw trials, traces and an analysis. Live model calls need `"live": true` **and**
+  `--allow-billable-calls`; the example config uses a deterministic mock model and never touches
+  the network. See [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md).
+- **LLM adapter instrumentation**: explicit sampling parameters, any OpenAI-compatible endpoint
+  (`base_url`, `api_key_env`), model-identity mismatch detection (`strict_model_identity`), retries
+  recorded as events rather than trials, and an honest `synthetic` flag for injected models.
+- **Trial outcome detail** (`outcomes.py`): `attack_succeeded`, `attack_failed`, `model_refused`,
+  `legit_task_completed_safely`, `blocked_by_control`, `tool_execution_failed`,
+  `model_api_failed`, `timed_out`, `unsupported`, `inconclusive`, plus `model_attempted` and
+  `executed` per trial, in the raw trial records. Scoring states are unchanged.
+- **Defensive-control comparison** (`controls.py`): `baseline`, `confirmation_gated`,
+  `egress_restricted`, `tool_restricted`, `policy_validated` (deterministic taint gate), run on the
+  same model, task and payload. A blocked attempt is environmental enforcement, not model refusal,
+  and is reported as such.
+- **Artifact integrity** (`bundle.py`): `assay verify-artifacts` checks hashes, unlisted files,
+  path safety, size caps, schema, id and trial-count consistency, trace-to-trial agreement,
+  scorecard verification, an optional Ed25519 index signature (`assay sign-artifacts`) and witness
+  receipts. Integrity is relative to the signer; it is not proof the experiment occurred.
+- **Redaction** (`redaction.py`, `assay redact`): deterministic, correlatable markers for API keys,
+  tokens, JWTs, PEM keys, emails, secret-named environment values and home paths, preserving the
+  synthetic canaries that are the evidence.
+- **Per-observation witness receipts** (`witness_receipt.py`): `assay witness-sink` signs a receipt
+  when a registered canary arrives at a sink the witness operates; `assay verify-witness` checks
+  signature, pinned or trusted key, ids, canary, freshness and replay with the public key only;
+  `assay witness-demo` is a local protocol demonstration and says so. See
+  [`docs/INDEPENDENT_WITNESS_GUIDE.md`](docs/INDEPENDENT_WITNESS_GUIDE.md).
+- **Statistics** (`analysis.py`, `assay analyze`): per-task Wilson intervals with the denominator
+  stated, coverage, legitimate-task completion, infrastructure reliability, failure modes, a
+  comparability-gated ranking and exploratory pairwise tests, computed only from artifacts.
+  [`research/statistical-analysis.md`](research/statistical-analysis.md) is generated from the
+  committed real-model scorecards and checked byte-for-byte in CI.
+- **Replication submissions** (`replication.py`, `assay replication validate`): evidence levels as
+  independent attributes (self-reported, independently witnessed, independently reproduced), each
+  claim checked against the bundle. See [`docs/REPLICATION_GUIDE.md`](docs/REPLICATION_GUIDE.md).
+- **Research documentation**: credibility audit, threat model, benchmark methodology, technical
+  report, case-study template and three case studies built only from committed evidence.
+- **CI job `evidence`**: runs a synthetic experiment and verifies its bundle, runs the witness
+  demo, verifies any committed bundles and submissions, and regenerates the statistics. No model
+  API is ever called in CI.
+
+### Changed
+
+- **README claims audit.** Real-model results are labelled self-reported and scoped to the agent
+  configurations measured; "secrets leaked" is restated as canary-bearing tool calls to a simulated
+  loopback sink; the shared-scenario and envelope caveats are stated. No measured number changed.
+- **Trace checker:** a request for a tool the model was never shown is recorded, not rejected —
+  only *executing* an unexposed tool is inconsistent.
+
 ## Unreleased — package 0.2.0
 
 Audit and repair of the v0.1 tree, from `675fae7`. Full account in
@@ -179,7 +256,7 @@ Audit and repair of the v0.1 tree, from `675fae7`. Full account in
   verifier, scorer, badge tool, runner package, the frozen catalog and the published schema.
 - **Scores use the frozen catalog's weight total as the denominator**, never the reported
   findings'. For a complete run this is identical, so every valid v0.1 score is unchanged.
-- **Tests: 7 → 578, standard library only.** Converted from pytest to `unittest`, so the
+- **Tests: 7 → 824, standard library only.** Converted from pytest to `unittest`, so the
   "stdlib alone" claim holds end to end and `unittest discover` no longer reports
   `Ran 0 tests ... OK`.
 - `license = { file = "LICENSE" }` → SPDX `license = "MIT"` with `license-files`, so builds no

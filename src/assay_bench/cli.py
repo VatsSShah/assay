@@ -607,6 +607,13 @@ def build_parser() -> argparse.ArgumentParser:
     at.add_argument("--out")
     at.set_defaults(func=cmd_attest)
 
+    # The evidence commands live beside the code they drive, each registering its own
+    # subcommands, so generation, verification and presentation stay in separate modules.
+    from . import analysis, bundle, experiment, redaction, replication, witness_receipt
+
+    for module in (experiment, bundle, redaction, witness_receipt, analysis, replication):
+        module.add_cli(sub)
+
     return p
 
 

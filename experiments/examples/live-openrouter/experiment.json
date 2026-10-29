@@ -1,0 +1,29 @@
+{
+  "schema": "assay/experiment-config/1",
+  "name": "live-openrouter",
+  "description": "TEMPLATE for a live run through OpenRouter. Set model.api_model_id to the exact model id you intend to call; validation rejects the placeholder. Running it needs both \"live\": true (below) and --allow-billable-calls, and the key in $OPENROUTER_API_KEY or ~/.config/assay/openrouter.key (never in this file).",
+  "operator": null,
+  "trials": 5,
+  "twins": false,
+  "model": {
+    "provider": "openrouter",
+    "api_model_id": "<SET-ME: provider/model-id>",
+    "live": true,
+    "api_key_env": "OPENROUTER_API_KEY",
+    "temperature": null,
+    "top_p": null,
+    "seed": null,
+    "max_output_tokens": 1024,
+    "strict_model_identity": true,
+    "max_attempts": 4
+  },
+  "agent": {"max_steps": 6, "timeout_s": 60},
+  "attack": {"task_ids": ["M1", "M3", "M7", "M23", "M24", "M9"], "variant": "plausible"},
+  "configurations": [
+    {"name": "baseline"},
+    {"name": "confirmation_gated"},
+    {"name": "egress_restricted", "allowlist": ["acme.com", "example.com"]},
+    {"name": "tool_restricted"},
+    {"name": "policy_validated"}
+  ]
+}

@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 from .helpers import (ROOT, MANIFESTS, LEGACY, V, canary_finding, first_fired_canary,
-                      legacy, load, mutate, reference, reseal, synthetic_manifest)
+                      legacy, load, mutate, reference, reseal, synthetic_manifest, CATALOG_DOC)
 
 #: The levels an ordinary, unwitnessed manifest can reach offline. `witnessed_egress` is
 #: deliberately NOT here: it needs a signature from a party the submitter does not control, so a
@@ -570,3 +570,37 @@ class NestedFieldTyping(unittest.TestCase):
         """Null is the honest value for a target that is not a model; it must stay legal."""
         m = self._mutate(lambda d: d["target"].update(model_snapshot=None))
         self.assertIn("internally_consistent", V.verify_manifest(m)["levels_verified"])
+
+
+class SubsetRuns(unittest.TestCase):
+    """A task-subset run is partial, and must say so for the RIGHT reason.
+
+    The verifier used to derive ``missing_tasks`` over the whole catalog while the runner derives
+    it over the track's own mode, so every agent-track subset run failed at
+    ``internally_consistent``. A test that only asserted "run_complete is refused" passed anyway,
+    which is how the bug hid. These assert the level reached, not just the exit code.
+    """
+
+    def _subset(self, track: str, tasks: list[str]) -> dict:
+        from assay_bench.adapters.conformance import build
+        from assay_bench.runner import run
+
+        return run(build("vulnerable"), track=track, trials=5, task_ids=tasks, twins=False)
+
+    def test_an_agent_subset_is_internally_consistent_but_not_complete(self):
+        result = V.verify_manifest(self._subset("agent", ["M1", "M2"]),
+                                   catalog=CATALOG_DOC)
+        self.assertIn("catalog_bound", result["levels_verified"])
+        self.assertNotIn("run_complete", result["levels_verified"])
+
+    def test_a_server_subset_is_internally_consistent_but_not_complete(self):
+        result = V.verify_manifest(self._subset("server", ["M6"]), catalog=CATALOG_DOC)
+        self.assertIn("catalog_bound", result["levels_verified"])
+        self.assertNotIn("run_complete", result["levels_verified"])
+
+    def test_misstated_missing_tasks_is_still_rejected(self):
+        manifest = self._subset("agent", ["M1", "M2"])
+        manifest["validity"]["assessment"]["missing_tasks"] = []
+        reseal(manifest)
+        with self.assertRaisesRegex(V.InconsistentManifest, "missing_tasks"):
+            V.verify_manifest(manifest, catalog=CATALOG_DOC)

@@ -23,3 +23,7 @@ demo/recording/*.webm
 demo/recording/*.mp4
 demo/recording/frames/
 demo/recording/ffmpeg.log
+
+# `assay experiment run` writes bundles here by default. A run is evidence to publish on purpose
+# (under experiments/published/), never something to sweep into a commit by accident.
+experiments/runs/

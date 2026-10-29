@@ -89,6 +89,9 @@ jobs:
       - name: A partial run must not reach run_complete
         run: |
           python -m assay_bench run --target vulnerable --trials 5 --task M1 --task M2 --out /tmp/partial.json
+          # It must verify first. Asserting only a non-zero exit below once let a subset run that
+          # failed internally_consistent (a verifier bug) pass this step for the wrong reason.
+          python src/assay_verifier.py verify /tmp/partial.json --require catalog_bound > /dev/null
           rc=0
           python src/assay_verifier.py verify /tmp/partial.json --require run_complete || rc=$?
           if [ "$rc" -eq 0 ]; then
@@ -398,6 +401,89 @@ jobs:
       - name: The package itself must still import with no third-party packages
         run: |
           python -c "import sys; sys.path.insert(0, 'src'); import assay_bench.mcp.client; print('stdlib-only import ok')"
+
+  # ------------------------------------------------------------- verifiable evidence
+  # Everything here is offline and stdlib-only: no model API is called, no package installed.
+  # It exercises the evidence pipeline end to end on a synthetic experiment, verifies every
+  # committed bundle and replication submission, and requires the generated statistical
+  # analysis to match its committed copy byte for byte.
+  evidence:
+    name: evidence bundles, witness protocol, replications, statistics
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # the analysis runs `git ls-tree` on the scorecards' recorded commit
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Evidence test modules
+        run: python -m unittest tests.test_benchmark_statistics tests.test_replication -v
+
+      - name: A synthetic experiment produces a bundle that verifies
+        run: |
+          rm -rf /tmp/exp
+          python -m assay_bench experiment run --config experiments/examples/synthetic-local/experiment.json --out /tmp/exp
+          shopt -s nullglob
+          bundles=(/tmp/exp/exp-*/)
+          if [ "${#bundles[@]}" -ne 1 ]; then
+            echo "::error::expected exactly one experiment bundle under /tmp/exp, found ${#bundles[@]}"; exit 1
+          fi
+          python -m assay_bench verify-artifacts "${bundles[0]}"
+          python -m assay_bench analyze "${bundles[0]}" --markdown /tmp/exp-report.md
+
+      - name: The witness protocol demonstration runs locally
+        run: python -m assay_bench witness-demo --out /tmp/wd
+
+      # An empty directory passes because there is nothing to verify, not because anything was.
+      - name: Every committed bundle verifies
+        run: |
+          shopt -s nullglob
+          n=0
+          for idx in experiments/published/*/artifact_index.json experiments/independent-replications/*/artifact_index.json; do
+            dir="$(dirname "$idx")"
+            echo "== $dir"
+            python -m assay_bench verify-artifacts "$dir"
+            n=$((n+1))
+          done
+          echo "$n committed bundle(s) verified"
+
+      - name: Every replication submission validates against its bundle
+        run: |
+          shopt -s nullglob
+          n=0
+          for s in experiments/independent-replications/*.submission.json; do
+            case "$(basename "$s")" in TEMPLATE.*) continue ;; esac
+            bundle="$(python - "$s" <<'PY'
+          import json, os, sys
+          path = sys.argv[1]
+          rel = json.load(open(path)).get("evidence", {}).get("bundle_path", "")
+          print(os.path.normpath(os.path.join(os.path.dirname(path), rel)) if rel else "")
+          PY
+          )"
+            if [ -z "$bundle" ] || [ ! -d "$bundle" ]; then
+              echo "::error::$s: evidence.bundle_path does not name a committed bundle"; exit 1
+            fi
+            echo "== $s (bundle $bundle)"
+            python -m assay_bench replication validate "$s" --bundle "$bundle"
+            n=$((n+1))
+          done
+          echo "$n submission(s) validated"
+
+      - name: The template must still fail validation
+        run: |
+          rc=0
+          python -m assay_bench replication validate experiments/independent-replications/TEMPLATE.submission.json > /dev/null || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::the unfilled template exited $rc; it must fail validation (1)"; exit 1
+          fi
+
+      - name: The statistical analysis regenerates identically
+        run: |
+          python research/generate_statistical_analysis.py --check
+          python research/generate_statistical_analysis.py
+          git diff --exit-code -- research/statistical-analysis.md
 
   # ---------------------------------------------------------------------- optional extras
   optional-pytest:
